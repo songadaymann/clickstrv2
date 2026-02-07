@@ -5,24 +5,24 @@
   "season": {
     "number": 1,
     "totalEpochs": 6,
-    "epochDuration": 600,
-    "poolAmount": "10000",
-    "seasonLengthDays": 0.041666666666666664
+    "epochDuration": 14400,
+    "poolAmount": "1000000",
+    "seasonLengthDays": 1
   },
   "contracts": {
     "clickToken": "0x120E2fCf5b26FC49Fe3d1E7c851346c898619C28",
-    "clickRegistry": "0x714b1CceBae8bD92a5C62cde310139b87e468d66",
+    "clickRegistry": "0xEfd58d7aA328561606451c69D86202330a9E8d4D",
     "clickstrTreasury": "0x82378b6C7247b02f4b985Aca079a0A85E0D2cbAe",
-    "clickstrGameV2": "0x9dECc3bEE4AD20f5fB7CeB279cDF3258ecBBbe80",
-    "clickstrNFTV2": "0x444d348Ec176d0a18765Fe4867A234F2AE8FdD4F"
+    "clickstrGameV2": "0x3Ad5468Dd1eDBe7da14F993b4ab1d9Fe331873f1",
+    "clickstrNFTV2": "0x43D37A412A9Bca7274242F26cccfa8d4B0025213"
   },
   "signers": {
     "attestation": "0xd4eEf240c88eA5Dc72de6fB7774065CEE22F7Afd",
     "nft": "0xf55E4fac663ad8db80284620F97D95391ab002EF"
   },
   "deployer": "0xAd9fDaD276AB1A430fD03177A07350CD7C61E897",
-  "deployedAt": "2026-02-06T21:45:13.709Z",
-  "gameStartTime": "2026-02-06T21:45:12.000Z",
-  "gameEndTime": "2026-02-06T22:45:12.000Z",
-  "blockNumber": 10206188
+  "deployedAt": "2026-02-07T12:07:24.328Z",
+  "gameStartTime": "2026-02-07T12:07:24.000Z",
+  "gameEndTime": "2026-02-08T12:07:24.000Z",
+  "blockNumber": 10210372
 }
