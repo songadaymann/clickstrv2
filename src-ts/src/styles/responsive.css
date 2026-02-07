@@ -1,0 +1,407 @@
+/**
+ * Responsive styles - Media queries for different screen sizes
+ */
+
+/* Tablets and smaller desktops */
+@media (max-width: 1024px) {
+  #leaderboard-panel {
+    min-width: 220px;
+    left: 15px;
+    padding: var(--spacing-md) var(--spacing-lg);
+  }
+
+  #nft-panel {
+    min-width: 200px;
+    right: 15px;
+    padding: var(--spacing-md) var(--spacing-lg);
+  }
+
+  #current-clicks-display .arcade-display {
+    font-size: 36px;
+    min-width: 160px;
+  }
+
+  .alltime-stat .arcade-display {
+    font-size: 18px;
+    min-width: 110px;
+  }
+
+  #alltime-stats-display {
+    gap: 20px;
+  }
+}
+
+/* Tablets - adjust game status panel */
+@media (max-width: 1024px) {
+  #game-status-panel {
+    min-width: 260px;
+    left: 15px;
+    bottom: 20px;
+    padding: var(--spacing-md) var(--spacing-lg);
+  }
+
+  .game-status-value {
+    font-size: 14px;
+  }
+
+  .global-stat-value {
+    font-size: 16px;
+  }
+
+  .active-count {
+    font-size: 14px;
+  }
+}
+
+/* Mobile landscape and small tablets */
+@media (max-width: 768px) {
+  /* Hide side panels on mobile - focus on the button */
+  #leaderboard-panel,
+  #nft-panel,
+  #game-status-panel {
+    display: none !important;
+  }
+
+  /* Hide top right buttons on mobile (use hamburger menu instead) */
+  #top-right-btns {
+    display: none !important;
+  }
+
+  /* Trophy section - make smaller on mobile */
+  .trophy-section {
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+  }
+
+  .trophy-title {
+    font-size: 12px;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .trophy-grid {
+    gap: var(--spacing-sm);
+  }
+
+  .trophy-item {
+    padding: var(--spacing-sm) var(--spacing-md);
+    min-width: 80px;
+  }
+
+  .trophy-img {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 4px;
+  }
+
+  .trophy-name {
+    font-size: 10px;
+  }
+
+  .trophy-click-num {
+    font-size: 9px;
+  }
+
+  /* Scale down the arcade displays */
+  #current-clicks-display {
+    top: 10px;
+  }
+
+  #current-clicks-display .arcade-display {
+    font-size: 28px;
+    min-width: 140px;
+    padding: 6px 12px;
+  }
+
+  #current-clicks-display .arcade-label {
+    font-size: 10px;
+  }
+
+  #alltime-stats-display {
+    bottom: 70px;
+    gap: 15px;
+  }
+
+  .alltime-stat .arcade-display {
+    font-size: 16px;
+    min-width: 90px;
+    padding: 4px 8px;
+  }
+
+  .alltime-stat .arcade-label {
+    font-size: 9px;
+  }
+
+  /* Adjust top bar */
+  #top-bar {
+    padding: 10px 15px;
+  }
+
+  #connect-btn {
+    font-size: 11px;
+    padding: 12px 18px;
+  }
+
+  /* Adjust bottom bar */
+  #bottom-bar {
+    padding: 10px 15px;
+  }
+
+  #status {
+    font-size: 9px;
+    max-width: 200px;
+  }
+
+  #submit-container {
+    transform: translate(-50%, -170px);
+  }
+
+  #submit-btn {
+    font-size: 14px;
+    padding: 12px 22px;
+  }
+
+  .submit-help {
+    font-size: 9px;
+  }
+
+  /* Collection modal */
+  .collection-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .collection-modal-content {
+    padding: 16px;
+    width: 95vw;
+  }
+
+  /* Help modal */
+  .help-modal-content {
+    padding: 24px 20px;
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .help-title {
+    font-size: 12px;
+  }
+
+  .help-section-title {
+    font-size: 9px;
+  }
+
+  .help-text {
+    font-size: 13px;
+  }
+
+  .help-list li {
+    font-size: 12px;
+    line-height: 1.8;
+  }
+
+  #help-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
+    bottom: 10px;
+    right: 10px;
+  }
+}
+
+/* Mobile portrait */
+@media (max-width: 480px) {
+  #current-clicks-display .arcade-display {
+    font-size: 24px;
+    min-width: 120px;
+    padding: 5px 10px;
+  }
+
+  #current-clicks-display .arcade-label {
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+
+  #alltime-stats-display {
+    bottom: 65px;
+    gap: 10px;
+    flex-direction: row;
+  }
+
+  .alltime-stat .arcade-display {
+    font-size: 14px;
+    min-width: 75px;
+    padding: 4px 6px;
+  }
+
+  .alltime-stat .arcade-label {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+
+  #connect-btn {
+    font-size: 10px;
+    padding: 10px 14px;
+  }
+
+  #submit-container {
+    transform: translate(-50%, -150px);
+  }
+
+  #submit-btn {
+    font-size: 12px;
+    padding: 10px 18px;
+  }
+
+  .submit-help {
+    font-size: 8px;
+  }
+
+  .submit-help-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 8px;
+  }
+
+  #status {
+    font-size: 8px;
+    max-width: 180px;
+  }
+
+  /* Modal adjustments */
+  .modal-content {
+    padding: 16px;
+    max-width: 300px;
+  }
+
+  .modal-title {
+    font-size: 10px;
+  }
+
+  .wallet-option {
+    padding: 12px;
+    font-size: 8px;
+  }
+
+  .wallet-option img {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* Claim modal */
+  .claim-modal-content {
+    padding: 16px;
+  }
+
+  .claim-modal-title {
+    font-size: 10px;
+  }
+
+  .claim-nft-preview {
+    font-size: 40px;
+  }
+
+  .claim-tier-name {
+    font-size: 10px;
+  }
+
+  .claim-btn {
+    font-size: 8px;
+    padding: 10px 20px;
+  }
+
+  .claim-later-btn {
+    font-size: 6px;
+    padding: 8px;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 360px) {
+  #current-clicks-display .arcade-display {
+    font-size: 20px;
+    min-width: 100px;
+  }
+
+  .alltime-stat .arcade-display {
+    font-size: 12px;
+    min-width: 65px;
+  }
+
+  #alltime-stats-display {
+    gap: 8px;
+  }
+
+  #connect-btn {
+    font-size: 9px;
+    padding: 8px 12px;
+  }
+
+  #submit-container {
+    transform: translate(-50%, -130px);
+  }
+
+  #submit-btn {
+    font-size: 10px;
+    padding: 8px 14px;
+  }
+
+  .submit-help {
+    font-size: 7px;
+  }
+
+  #status {
+    font-size: 7px;
+  }
+}
+
+/* Landscape orientation on mobile - adjust vertical spacing */
+@media (max-height: 500px) and (orientation: landscape) {
+  #current-clicks-display {
+    top: 5px;
+  }
+
+  #current-clicks-display .arcade-display {
+    font-size: 20px;
+    padding: 4px 8px;
+  }
+
+  #current-clicks-display .arcade-label {
+    font-size: 6px;
+    margin-bottom: 2px;
+  }
+
+  #alltime-stats-display {
+    bottom: 55px;
+  }
+
+  .alltime-stat .arcade-display {
+    font-size: 14px;
+    padding: 3px 6px;
+  }
+
+  .alltime-stat .arcade-label {
+    font-size: 5px;
+  }
+
+  #top-bar {
+    padding: 5px 10px;
+  }
+
+  #bottom-bar {
+    padding: 5px 10px;
+  }
+
+  #submit-container {
+    transform: translate(-50%, -110px);
+  }
+
+  #submit-btn {
+    font-size: 10px;
+    padding: 6px 12px;
+  }
+
+  .submit-help {
+    font-size: 7px;
+    gap: 4px;
+  }
+}

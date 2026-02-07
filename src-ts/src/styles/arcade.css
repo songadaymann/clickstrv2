@@ -1,0 +1,107 @@
+/**
+ * Arcade display styles - DSEG7 segmented displays
+ */
+
+.arcade-display {
+  font-family: var(--font-display);
+  color: var(--color-red-400);
+  text-shadow:
+    var(--glow-red-md),
+    var(--glow-red-lg),
+    var(--glow-red-xl);
+  letter-spacing: 2px;
+  background: rgba(0, 0, 0, 0.6);
+  /* Adjusted padding: more on top to push down, more on right to center horizontally */
+  padding: 12px 20px 8px 16px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-red-950);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+.arcade-label {
+  font-family: var(--font-label);
+  font-size: 12px;
+  color: var(--color-red-400);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+  text-align: center;
+  text-shadow: 0 0 6px rgba(255, 0, 0, 0.5);
+  opacity: 0.7;
+}
+
+/* Top center - 2x2 grid of player stats */
+#player-stats-grid {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  z-index: var(--z-ui);
+  pointer-events: none;
+}
+
+.player-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.player-stat .arcade-label {
+  font-size: 14px;
+  letter-spacing: 2px;
+  opacity: 1;
+  text-shadow: var(--glow-red-md), 0 0 16px rgba(255, 0, 0, 0.4);
+}
+
+.player-stat .arcade-display {
+  font-size: 28px;
+  min-width: 160px;
+  text-align: center;
+}
+
+/* Streak stat - hidden until wallet connected */
+#streak-stat {
+  display: none;
+}
+
+#streak-stat.visible {
+  display: flex;
+}
+
+/* Achievement toast - ARCADE STYLE */
+#achievement-toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #111111;
+  border: 3px solid var(--color-green);
+  color: white;
+  padding: var(--spacing-lg) var(--spacing-2xl);
+  border-radius: var(--radius-md);
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  z-index: var(--z-toast);
+  opacity: 0;
+  transition: all 0.3s ease-out;
+  pointer-events: none;
+  box-shadow:
+    0 0 20px rgba(0, 255, 0, 0.5),
+    0 0 40px rgba(0, 255, 0, 0.3),
+    var(--shadow-inset);
+}
+
+#achievement-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.achievement-name {
+  color: var(--color-green);
+  font-size: 10px;
+  margin-bottom: 6px;
+  text-shadow: 0 0 10px var(--color-green-glow);
+}

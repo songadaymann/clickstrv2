@@ -1,0 +1,180 @@
+/**
+ * Particle and animation effects
+ */
+
+/* Base particle styles */
+.cursor-particle {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+/* Smoke Rise Animation */
+@keyframes smokeRise {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
+  50% { opacity: 0.5; }
+  100% { transform: translate(-50%, calc(-50% - 40px)) scale(1.5); opacity: 0; }
+}
+
+/* Sparkle Animation */
+@keyframes sparkle {
+  0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 1; }
+  50% { transform: translate(-50%, -50%) scale(1) rotate(180deg); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(0) rotate(360deg); opacity: 0; }
+}
+
+/* Float Away Animation */
+@keyframes floatAway {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.5); opacity: 0; }
+}
+
+/* Glitch Animation */
+@keyframes glitchShift {
+  0% { transform: translate(-50%, -50%); opacity: 0.8; }
+  25% { transform: translate(calc(-50% + 5px), calc(-50% - 2px)); opacity: 0.6; }
+  50% { transform: translate(calc(-50% - 3px), calc(-50% + 3px)); opacity: 0.4; }
+  75% { transform: translate(calc(-50% + 2px), calc(-50% - 5px)); opacity: 0.2; }
+  100% { transform: translate(-50%, -50%); opacity: 0; }
+}
+
+/* Rainbow Cycle Animation */
+@keyframes rainbowCycle {
+  0% { filter: hue-rotate(0deg); transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+  100% { filter: hue-rotate(360deg); transform: translate(-50%, calc(-50% - 30px)) scale(0.5); opacity: 0; }
+}
+
+/* Smoke/Flame Particles */
+.particle-smoke-green {
+  background: radial-gradient(circle, rgba(50, 205, 50, 0.9) 0%, rgba(34, 139, 34, 0.6) 40%, transparent 100%);
+  box-shadow: 0 0 8px rgba(50, 205, 50, 0.8), 0 0 16px rgba(34, 139, 34, 0.5);
+  animation: smokeRise 1s ease-out forwards;
+}
+
+.particle-flame-orange {
+  background: radial-gradient(circle, rgba(255, 200, 50, 1) 0%, rgba(255, 100, 0, 0.8) 40%, rgba(200, 50, 0, 0.4) 70%, transparent 100%);
+  box-shadow: 0 0 10px rgba(255, 150, 0, 0.9), 0 0 20px rgba(255, 80, 0, 0.5);
+  animation: smokeRise 0.8s ease-out forwards;
+}
+
+.particle-flame-blue {
+  background: radial-gradient(circle, rgba(150, 200, 255, 1) 0%, rgba(50, 150, 255, 0.8) 40%, rgba(0, 80, 200, 0.4) 70%, transparent 100%);
+  box-shadow: 0 0 10px rgba(100, 180, 255, 0.9), 0 0 20px rgba(50, 100, 255, 0.5);
+  animation: smokeRise 0.8s ease-out forwards;
+}
+
+.particle-flame-white {
+  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(200, 220, 255, 0.8) 40%, rgba(150, 180, 255, 0.4) 70%, transparent 100%);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.9), 0 0 25px rgba(200, 220, 255, 0.6);
+  animation: smokeRise 0.7s ease-out forwards;
+}
+
+.particle-flame-red {
+  background: radial-gradient(circle, rgba(255, 100, 50, 1) 0%, rgba(200, 0, 0, 0.8) 40%, rgba(100, 0, 0, 0.4) 70%, transparent 100%);
+  box-shadow: 0 0 10px rgba(255, 50, 0, 0.9), 0 0 20px rgba(200, 0, 0, 0.5);
+  animation: smokeRise 0.8s ease-out forwards;
+}
+
+/* Sparkle Particles */
+.particle-sparkle-gold {
+  background: radial-gradient(circle, rgba(255, 215, 0, 1) 0%, rgba(255, 180, 0, 0.6) 50%, transparent 100%);
+  box-shadow: 0 0 6px rgba(255, 215, 0, 1), 0 0 12px rgba(255, 180, 0, 0.8);
+  animation: sparkle 0.6s ease-out forwards;
+}
+
+.particle-sparkle-silver {
+  background: radial-gradient(circle, rgba(220, 220, 230, 1) 0%, rgba(180, 180, 200, 0.6) 50%, transparent 100%);
+  box-shadow: 0 0 6px rgba(220, 220, 230, 1), 0 0 12px rgba(200, 200, 220, 0.8);
+  animation: sparkle 0.6s ease-out forwards;
+}
+
+.particle-sparkle-rainbow {
+  background: radial-gradient(circle, rgba(255, 100, 100, 1) 0%, rgba(255, 200, 100, 0.8) 25%, rgba(100, 255, 100, 0.6) 50%, rgba(100, 200, 255, 0.4) 75%, transparent 100%);
+  box-shadow: 0 0 8px rgba(255, 150, 150, 0.8);
+  animation: rainbowCycle 1s ease-out forwards;
+}
+
+/* Glow Particles */
+.particle-glow-white {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(220, 240, 255, 0.5) 50%, transparent 100%);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.8), 0 0 30px rgba(200, 220, 255, 0.4);
+  animation: floatAway 1.2s ease-out forwards;
+}
+
+.particle-glow-pink {
+  background: radial-gradient(circle, rgba(255, 100, 200, 0.9) 0%, rgba(255, 50, 150, 0.5) 50%, transparent 100%);
+  box-shadow: 0 0 12px rgba(255, 100, 200, 0.8), 0 0 24px rgba(255, 50, 150, 0.4);
+  animation: floatAway 1s ease-out forwards;
+}
+
+/* Special Effect Particles */
+.particle-matrix {
+  background: rgba(0, 255, 0, 0.9);
+  box-shadow: 0 0 4px rgba(0, 255, 0, 0.8);
+  border-radius: 2px;
+  font-family: monospace;
+  animation: floatAway 1.5s linear forwards;
+}
+
+.particle-glitch {
+  background: rgba(255, 0, 255, 0.7);
+  box-shadow: 0 0 4px rgba(0, 255, 255, 0.8), 0 0 8px rgba(255, 0, 255, 0.6);
+  animation: glitchShift 0.5s steps(4) forwards;
+}
+
+.particle-lava {
+  background: radial-gradient(circle, rgba(255, 200, 0, 1) 0%, rgba(255, 100, 0, 0.8) 30%, rgba(200, 0, 0, 0.6) 60%, rgba(50, 0, 0, 0.3) 100%);
+  box-shadow: 0 0 8px rgba(255, 100, 0, 0.9), 0 0 16px rgba(200, 0, 0, 0.5);
+  animation: smokeRise 1.2s ease-out forwards;
+}
+
+.particle-rasta {
+  background: conic-gradient(rgba(0, 128, 0, 0.8), rgba(255, 215, 0, 0.8), rgba(255, 0, 0, 0.8), rgba(0, 128, 0, 0.8));
+  animation: floatAway 1s ease-out forwards;
+}
+
+.particle-dragon {
+  background: radial-gradient(circle, rgba(255, 50, 0, 1) 0%, rgba(255, 150, 0, 0.7) 40%, rgba(200, 0, 0, 0.4) 70%, transparent 100%);
+  box-shadow: 0 0 10px rgba(255, 100, 0, 0.9), 0 0 20px rgba(255, 50, 0, 0.5);
+  animation: smokeRise 0.9s ease-out forwards;
+}
+
+/* Confetti canvas */
+#confetti-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: calc(var(--z-toast) - 1);
+}
+
+/* Disco overlay */
+#disco-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: calc(var(--z-toast) - 2);
+  opacity: 0;
+  transition: opacity 0.3s;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 0, 0, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(0, 255, 0, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 20% 80%, rgba(0, 0, 255, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255, 255, 0, 0.3) 0%, transparent 50%);
+  animation: none;
+}
+
+#disco-overlay.active {
+  opacity: 1;
+  animation: discoColors 0.5s infinite;
+}
+
+@keyframes discoColors {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}

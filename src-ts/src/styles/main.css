@@ -1,0 +1,34 @@
+/**
+ * Main CSS entry point
+ * Imports all style partials in correct order
+ */
+
+/* CSS Variables and theme */
+@import './variables.css';
+
+/* Reset and base styles */
+@import './base.css';
+
+/* Effects (particles, animations) */
+@import './effects.css';
+
+/* Layout (game container, overlays) */
+@import './layout.css';
+
+/* Arcade displays (DSEG7 numbers) */
+@import './arcade.css';
+
+/* Buttons (arcade style) */
+@import './buttons.css';
+
+/* Panels (leaderboard, NFT, info) */
+@import './panels.css';
+
+/* Modals (wallet, claim, help, collection, rankings) */
+@import './modals.css';
+
+/* Mobile menu */
+@import './mobile-menu.css';
+
+/* Responsive breakpoints */
+@import './responsive.css';

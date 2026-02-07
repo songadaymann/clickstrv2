@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clickstr - Bot Mining Guide</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-bg: #0a0a0a;
+      --color-red-400: #f87171;
+      --color-red-500: #ef4444;
+      --color-red-600: #dc2626;
+      --color-red-700: #b91c1c;
+      --color-red-800: #991b1b;
+      --color-red-900: #7f1d1d;
+      --color-red-950: #450a0a;
+      --color-cyan: #00ffff;
+      --color-green: #4ade80;
+      --color-yellow: #facc15;
+      --font-pixel: 'Press Start 2P', cursive;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--color-bg);
+      color: #e5e5e5;
+      font-family: var(--font-mono);
+      line-height: 1.7;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    .logo {
+      font-family: var(--font-pixel);
+      font-size: 28px;
+      color: var(--color-red-500);
+      text-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+      margin-bottom: 10px;
+    }
+
+    .logo a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .logo a:hover {
+      color: var(--color-red-400);
+    }
+
+    .subtitle {
+      font-family: var(--font-pixel);
+      font-size: 12px;
+      color: var(--color-red-700);
+      letter-spacing: 2px;
+    }
+
+    h1 {
+      font-family: var(--font-pixel);
+      font-size: 16px;
+      color: var(--color-red-400);
+      margin: 40px 0 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--color-red-900);
+    }
+
+    h2 {
+      font-family: var(--font-pixel);
+      font-size: 11px;
+      color: var(--color-red-500);
+      margin: 30px 0 15px;
+    }
+
+    p {
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .warning-box {
+      background: linear-gradient(to bottom, var(--color-red-950), #1a0a0a);
+      border: 2px solid var(--color-red-700);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 30px 0;
+    }
+
+    .warning-title {
+      font-family: var(--font-pixel);
+      font-size: 10px;
+      color: var(--color-yellow);
+      margin-bottom: 10px;
+    }
+
+    .warning-box p {
+      font-size: 13px;
+      color: #d1d5db;
+    }
+
+    .info-box {
+      background: linear-gradient(to bottom, #0a1a1a, #050f0f);
+      border: 2px solid #0d9488;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 30px 0;
+    }
+
+    .info-title {
+      font-family: var(--font-pixel);
+      font-size: 10px;
+      color: var(--color-cyan);
+      margin-bottom: 10px;
+    }
+
+    .info-box p {
+      font-size: 13px;
+      color: #d1d5db;
+    }
+
+    pre {
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 15px 0;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      color: var(--color-green);
+    }
+
+    .code-inline {
+      background: #1a1a1a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    ol, ul {
+      margin: 15px 0 15px 25px;
+    }
+
+    li {
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .step-num {
+      color: var(--color-red-500);
+      font-weight: 600;
+    }
+
+    a {
+      color: var(--color-cyan);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 40px;
+      font-family: var(--font-pixel);
+      font-size: 10px;
+      color: var(--color-red-500);
+      border: 2px solid var(--color-red-700);
+      padding: 12px 20px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .back-link:hover {
+      background: var(--color-red-950);
+      border-color: var(--color-red-500);
+      text-decoration: none;
+    }
+
+    .config-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 13px;
+    }
+
+    .config-table th,
+    .config-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #333;
+    }
+
+    .config-table th {
+      font-family: var(--font-pixel);
+      font-size: 9px;
+      color: var(--color-red-500);
+      background: #111;
+    }
+
+    .config-table td:first-child {
+      color: var(--color-green);
+      font-family: var(--font-mono);
+    }
+
+    .footer {
+      margin-top: 60px;
+      padding-top: 30px;
+      border-top: 1px solid #333;
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+    }
+
+    @media (max-width: 600px) {
+      .logo {
+        font-size: 20px;
+      }
+
+      .subtitle {
+        font-size: 9px;
+      }
+
+      h1 {
+        font-size: 12px;
+      }
+
+      h2 {
+        font-size: 10px;
+      }
+
+      pre {
+        font-size: 11px;
+        padding: 12px;
+      }
+
+      .config-table {
+        font-size: 11px;
+      }
+
+      .config-table th {
+        font-size: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo"><a href="/">CLICKSTR</a></div>
+      <div class="subtitle">BOT MINING GUIDE</div>
+    </div>
+
+    <div class="warning-box">
+      <div class="warning-title">IMPORTANT</div>
+      <p>
+        Bot/script mining earns <strong>$CLICK tokens</strong>, but does <strong>NOT</strong> count toward NFT rewards, achievements, or milestones.
+        Only clicks through the <a href="/">frontend</a> earn NFTs and collectibles.
+      </p>
+    </div>
+
+    <h1>What is Bot Mining?</h1>
+    <p>
+      Clickstr uses proof-of-work (PoW) for every click. This means you can mine $CLICK tokens
+      by running a script that computes valid hashes and submits them directly to the smart contract,
+      bypassing the frontend entirely.
+    </p>
+    <p>
+      Scripts are explicitly allowed - they still do real computational work and pay gas fees.
+      The difficulty adjusts based on total clicks, so more mining makes it harder for everyone.
+    </p>
+
+    <div class="info-box">
+      <div class="info-title">WHY ALLOW BOTS?</div>
+      <p>
+        The 50/50 burn mechanism + gas costs create natural rate limiting.
+        Mindless botting is expensive, and humans remain competitive because their marginal cost is near zero.
+        The best strategy: batch clicks and submit during low gas periods.
+      </p>
+    </div>
+
+    <h1>Quick Start</h1>
+
+    <h2>1. Prerequisites</h2>
+    <ul>
+      <li><a href="https://nodejs.org/" target="_blank">Node.js</a> v18 or higher</li>
+      <li>A wallet with some ETH for gas (Sepolia testnet for testing, Mainnet for production)</li>
+      <li>Your wallet's private key</li>
+    </ul>
+
+    <h2>2. Download the Miner</h2>
+    <p>Download the public miner script from GitHub:</p>
+    <pre><code>curl -O https://raw.githubusercontent.com/songadaymann/clickstr/main/scripts/public-miner.js</code></pre>
+    <p>Or clone the entire repo:</p>
+    <pre><code>git clone https://github.com/songadaymann/clickstr.git
+cd clickstr/scripts</code></pre>
+
+    <h2>3. Install Dependencies</h2>
+    <pre><code>npm install ethers dotenv</code></pre>
+
+    <h2>4. Configure Your Wallet</h2>
+    <p>Create a <code class="code-inline">.env</code> file in the same directory as the script:</p>
+    <pre><code># Required: Your wallet private key
+PRIVATE_KEY=0xYourPrivateKeyHere
+
+# Optional: Custom settings
+NETWORK=sepolia
+BATCH_SIZE=500
+NUM_WORKERS=8</code></pre>
+
+    <div class="warning-box">
+      <div class="warning-title">SECURITY</div>
+      <p>
+        Never share your private key. Never commit it to git.
+        Consider using a dedicated mining wallet with only the ETH you need for gas.
+      </p>
+    </div>
+
+    <h2>5. Run the Miner</h2>
+    <pre><code>node public-miner.js</code></pre>
+    <p>You should see output like:</p>
+    <pre><code>+===============================================================+
+|                  CLICKSTR PUBLIC MINER                        |
++===============================================================+
+|  Network: sepolia  | Batch: 500 | Workers: 8                  |
++===============================================================+
+|  NOTE: Script clicks earn $CLICK but NOT NFT rewards.         |
+|        Use clickstr.fun for NFTs and collectibles!            |
++===============================================================+
+
+Wallet: 0xYour...Address
+Contract: 0x6dD800B88FEecbE7DaBb109884298590E5BbBf20
+
+Mining 500 nonces with 8 threads...
+   Mined 500 nonces in 2.34s
+   Hash rate: 15,234 H/s (8 threads)
+
+Submitting 500 nonces...
+   TX: https://sepolia.etherscan.io/tx/0x...
+   500 clicks | +125.5 CLICK | 125.5 burned</code></pre>
+
+    <h1>Configuration Options</h1>
+
+    <table class="config-table">
+      <tr>
+        <th>Variable</th>
+        <th>Required</th>
+        <th>Default</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td>PRIVATE_KEY</td>
+        <td>Yes</td>
+        <td>-</td>
+        <td>Your wallet's private key (with 0x prefix)</td>
+      </tr>
+      <tr>
+        <td>NETWORK</td>
+        <td>No</td>
+        <td>sepolia</td>
+        <td>Network to use: "sepolia" or "mainnet"</td>
+      </tr>
+      <tr>
+        <td>RPC_URL</td>
+        <td>No</td>
+        <td>Public RPC</td>
+        <td>Custom RPC endpoint for better reliability</td>
+      </tr>
+      <tr>
+        <td>BATCH_SIZE</td>
+        <td>No</td>
+        <td>500</td>
+        <td>Proofs per transaction (50-500)</td>
+      </tr>
+      <tr>
+        <td>NUM_WORKERS</td>
+        <td>No</td>
+        <td>All CPUs</td>
+        <td>Number of CPU threads for mining</td>
+      </tr>
+    </table>
+
+    <h1>How It Works</h1>
+
+    <h2>The Mining Process</h2>
+    <ol>
+      <li><span class="step-num">1.</span> The script fetches the current game state (epoch, difficulty)</li>
+      <li><span class="step-num">2.</span> Worker threads mine nonces by computing keccak256 hashes</li>
+      <li><span class="step-num">3.</span> Valid nonces (hash &lt; difficulty target) are collected</li>
+      <li><span class="step-num">4.</span> Once enough nonces are found, they're submitted to the contract</li>
+      <li><span class="step-num">5.</span> The contract verifies each proof and distributes tokens</li>
+      <li><span class="step-num">6.</span> 50% goes to you, 50% is burned forever</li>
+    </ol>
+
+    <h2>Hash Formula</h2>
+    <pre><code>hash = keccak256(abi.encodePacked(
+  userAddress,  // Your wallet
+  nonce,        // Random number you're searching for
+  epoch,        // Current game epoch
+  chainId       // Network (1 for mainnet, 11155111 for sepolia)
+))
+
+// Valid if:
+uint256(hash) &lt; difficultyTarget</code></pre>
+
+    <h1>Tips for Better Mining</h1>
+
+    <ul>
+      <li><strong>Use a dedicated RPC:</strong> Public RPCs can be slow or rate-limited. Consider <a href="https://www.alchemy.com/" target="_blank">Alchemy</a> or <a href="https://www.infura.io/" target="_blank">Infura</a> for reliability.</li>
+      <li><strong>Monitor gas prices:</strong> Submit during low gas periods to maximize profit. Use <a href="https://etherscan.io/gastracker" target="_blank">Etherscan Gas Tracker</a>.</li>
+      <li><strong>Max batch size:</strong> Always use 500 (the maximum) to minimize gas overhead per click.</li>
+      <li><strong>Multiple machines:</strong> You can run the miner on multiple machines with the same wallet.</li>
+      <li><strong>Watch the difficulty:</strong> As more people mine, difficulty increases and each click earns less.</li>
+    </ul>
+
+    <h1>Contract Addresses</h1>
+
+    <h2>Mainnet (Current)</h2>
+    <pre><code>Clickstr: 0xf724ede44Bbb2Ccf46cec530c21B14885D441e02
+Token:    0x7ddbd0c4a0383a0f9611b715809f92c90e1d991d</code></pre>
+
+    <h2>Sepolia Testnet</h2>
+    <pre><code>Clickstr: 0xf724ede44Bbb2Ccf46cec530c21B14885D441e02
+Token:    0x78A607EDE7C7b134F51E725e4bA73D7b269580fc</code></pre>
+
+    <h1>Custom Scripts</h1>
+    <p>
+      Want to write your own miner? The contract is permissionless - anyone can call
+      <code class="code-inline">submitClicks(uint256[] calldata nonces)</code> with valid proofs.
+    </p>
+    <p>Key requirements:</p>
+    <ul>
+      <li>Minimum 50 proofs per transaction</li>
+      <li>Maximum 500 proofs per transaction</li>
+      <li>Each proof must be unique (tracked on-chain)</li>
+      <li>Hash must be below the current difficulty target</li>
+      <li>Proofs must include the current epoch</li>
+    </ul>
+
+    <p>
+      See the <a href="https://github.com/songadaymann/clickstr/blob/main/contracts/Clickstr.sol" target="_blank">contract source</a>
+      and <a href="https://github.com/songadaymann/clickstr/blob/main/scripts/public-miner.js" target="_blank">miner source</a>
+      for implementation details.
+    </p>
+
+    <a href="/" class="back-link">&larr; Back to Game</a>
+
+    <div class="footer">
+      <p>Clickstr - Click the button. Get tokens. Burn tokens.</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,1000 @@
+/**
+ * Panel styles - Leaderboard, NFT, Collection
+ */
+
+/* ============ LEADERBOARD PANEL ============ */
+#leaderboard-panel {
+  position: absolute;
+  top: 250px;
+  left: 30px;
+  background: var(--color-dark-overlay);
+  border: 2px solid var(--color-red-950);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xl) var(--spacing-2xl);
+  min-width: 340px;
+  z-index: var(--z-ui);
+  box-shadow: var(--shadow-inset);
+  display: none; /* Hidden until wallet connected */
+}
+
+.leaderboard-header {
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.leaderboard-title {
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 22px;
+  text-shadow:
+    var(--glow-red-md),
+    var(--glow-red-lg);
+  letter-spacing: 3px;
+}
+
+.leaderboard-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: var(--spacing-md);
+}
+
+.leaderboard-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--color-red-800);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-family: var(--font-label);
+  font-size: 12px;
+  color: var(--color-red-400);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.leaderboard-toggle-btn:hover {
+  opacity: 0.8;
+  border-color: var(--color-red-600);
+}
+
+.leaderboard-toggle-btn.active {
+  opacity: 1;
+  background: var(--color-red-950);
+  border-color: var(--color-red-600);
+  text-shadow: var(--glow-red-sm);
+}
+
+.leaderboard-global {
+  display: block;
+  margin-top: var(--spacing-sm);
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 14px;
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+  opacity: 0.7;
+}
+
+.leaderboard-global-count {
+  font-family: var(--font-display);
+  color: var(--color-red-400);
+  font-size: 14px;
+  text-shadow: var(--glow-red-md);
+}
+
+.leaderboard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 165px;
+  overflow-y: auto;
+}
+
+.leaderboard-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-red-975);
+  font-family: var(--font-display);
+  overflow: visible;
+}
+
+.leaderboard-item:last-child {
+  border-bottom: none;
+}
+
+.leaderboard-item.is-you {
+  background: transparent;
+}
+
+.leaderboard-rank {
+  color: var(--color-red-400);
+  width: 40px;
+  text-align: left;
+  font-size: 16px;
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+  opacity: 0.6;
+}
+
+.leaderboard-rank.gold,
+.leaderboard-rank.silver,
+.leaderboard-rank.bronze {
+  color: var(--color-red-400);
+  text-shadow: var(--glow-red-md);
+  opacity: 1;
+}
+
+.leaderboard-indicator {
+  font-size: 14px;
+  margin-right: 6px;
+}
+
+.leaderboard-cursor-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  margin-right: 6px;
+  border-radius: var(--radius-sm);
+}
+
+.leaderboard-name {
+  flex: 1;
+  color: var(--color-red-400);
+  font-family: var(--font-label);
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0 10px;
+  text-shadow: 0 0 6px rgba(255, 0, 0, 0.5);
+  opacity: 0.8;
+}
+
+.leaderboard-name.is-you {
+  color: var(--color-red-400);
+  opacity: 1;
+  text-shadow: var(--glow-red-md);
+}
+
+.leaderboard-clicks {
+  color: var(--color-red-400);
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 1.4;
+  padding-bottom: 2px;
+  text-shadow:
+    var(--glow-red-md),
+    var(--glow-red-lg);
+}
+
+.leaderboard-separator {
+  display: none;
+}
+
+.leaderboard-you {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-red-950);
+}
+
+.leaderboard-you-label {
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: var(--spacing-sm);
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+  opacity: 0.7;
+}
+
+.leaderboard-loading {
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 14px;
+  text-align: center;
+  padding: var(--spacing-xl) 0;
+  text-shadow: var(--glow-red-sm);
+  opacity: 0.5;
+}
+
+/* ============ NFT PANEL ============ */
+#nft-panel {
+  position: absolute;
+  top: 250px;
+  right: 30px;
+  background: var(--color-dark-overlay);
+  border: 2px solid var(--color-red-950);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xl) var(--spacing-2xl);
+  min-width: 340px;
+  z-index: var(--z-ui);
+  box-shadow: var(--shadow-inset);
+  display: none; /* Hidden until wallet connected and has claimable NFTs */
+}
+
+/* ============ STREAK PANEL (moved to arcade.css as #streak-stat) ============ */
+
+.nft-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.sync-btn {
+  background: transparent;
+  border: 1px solid var(--color-red-800);
+  border-radius: var(--radius-sm);
+  color: var(--color-red-400);
+  font-size: 18px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sync-btn:hover {
+  opacity: 1;
+  border-color: var(--color-red-600);
+  text-shadow: var(--glow-red-sm);
+}
+
+.sync-btn.syncing {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.nft-title {
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 22px;
+  text-shadow:
+    var(--glow-red-md),
+    var(--glow-red-lg);
+  letter-spacing: 3px;
+}
+
+.nft-count {
+  font-family: var(--font-display);
+  color: var(--color-red-400);
+  font-size: 14px;
+  text-shadow: var(--glow-red-md);
+  margin-left: 10px;
+}
+
+.nft-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 165px;
+  overflow-y: auto;
+}
+
+.nft-item {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-md) 0;
+  border-bottom: 1px solid var(--color-red-975);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.nft-item:last-child {
+  border-bottom: none;
+}
+
+.nft-item:hover {
+  background: rgba(255, 0, 0, 0.1);
+}
+
+.nft-item.claimed {
+  cursor: default;
+}
+
+.nft-item.claimed:hover {
+  background: transparent;
+}
+
+/* Green MINT button for claimable NFTs */
+.nft-mint-btn {
+  background: transparent;
+  border: 1px solid var(--color-green);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-family: var(--font-label);
+  font-size: 12px;
+  color: var(--color-green);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px var(--color-green-glow);
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.3);
+}
+
+.nft-mint-btn:hover {
+  background: rgba(0, 255, 0, 0.15);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+.nft-emoji {
+  font-size: 20px;
+  margin-right: var(--spacing-md);
+  filter: drop-shadow(0 0 4px rgba(255, 0, 0, 0.5));
+}
+
+.nft-cursor-icon {
+  width: 40px;
+  height: 40px;
+  margin-right: var(--spacing-md);
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px rgba(255, 0, 0, 0.5));
+}
+
+.nft-info {
+  flex: 1;
+}
+
+.nft-name {
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 18px;
+  margin-bottom: 4px;
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+}
+
+.nft-desc {
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 14px;
+  opacity: 0.5;
+  text-shadow: 0 0 4px rgba(255, 0, 0, 0.3);
+}
+
+.nft-status {
+  font-family: var(--font-label);
+  font-size: 14px;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.nft-status.claimable {
+  background: transparent;
+  color: var(--color-green);
+  border: 1px solid var(--color-green);
+  text-shadow: 0 0 8px var(--color-green-glow);
+  box-shadow: var(--glow-green-md);
+}
+
+.nft-status.claimed {
+  background: transparent;
+  color: var(--color-red-400);
+  border: 1px solid var(--color-red-950);
+  opacity: 0.4;
+}
+
+.nft-empty {
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 14px;
+  text-align: center;
+  padding: var(--spacing-xl) 0;
+  text-shadow: var(--glow-red-sm);
+  opacity: 0.5;
+}
+
+.nft-footer {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-red-950);
+  text-align: center;
+}
+
+/* ============ COLLECTION GRID ============ */
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-md);
+  max-height: 55vh;
+  overflow-y: auto;
+  padding: var(--spacing-md);
+}
+
+.collection-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-lg) var(--spacing-md);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--color-red-975);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.collection-item:hover {
+  background: rgba(255, 0, 0, 0.1);
+  border-color: var(--color-red-400);
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+}
+
+.collection-item.equipped {
+  border-color: var(--color-green);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+}
+
+.collection-item.locked {
+  opacity: 0.5;
+  cursor: default;
+  border-style: dashed;
+}
+
+.collection-item.locked:hover {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: var(--color-red-975);
+  box-shadow: none;
+}
+
+.collection-cursor-preview {
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--spacing-sm);
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 4px rgba(255, 0, 0, 0.5));
+}
+
+.collection-item-emoji {
+  font-size: 32px;
+  margin-bottom: var(--spacing-sm);
+  filter: drop-shadow(0 0 4px rgba(255, 0, 0, 0.5));
+}
+
+.collection-item-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  margin-bottom: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  filter: drop-shadow(0 0 4px rgba(255, 0, 0, 0.5));
+}
+
+.collection-item-slot {
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--spacing-sm);
+  border: 2px dashed var(--color-red-950);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-label);
+  color: var(--color-red-950);
+  font-size: 20px;
+}
+
+.collection-item-name {
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 14px;
+  text-align: center;
+  text-shadow: 0 0 6px rgba(255, 0, 0, 0.5);
+}
+
+.collection-item.equipped .collection-item-name {
+  color: var(--color-green);
+  text-shadow: 0 0 6px rgba(0, 255, 0, 0.5);
+}
+
+.collection-footer {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-red-950);
+  text-align: center;
+}
+
+.equipped-cursor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.equipped-label {
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 14px;
+  opacity: 0.7;
+  text-shadow: 0 0 6px rgba(255, 0, 0, 0.4);
+}
+
+.equipped-cursor-name {
+  font-family: var(--font-label);
+  color: var(--color-green);
+  font-size: 16px;
+  text-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
+}
+
+.collection-empty {
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 14px;
+  text-align: center;
+  padding: 40px 20px;
+  opacity: 0.5;
+  text-shadow: var(--glow-red-sm);
+}
+
+/* ============ TROPHY SECTION (1/1 Legendary) ============ */
+.trophy-section {
+  margin-bottom: var(--spacing-2xl);
+  padding: var(--spacing-lg);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 165, 0, 0.05) 100%);
+  border: 2px solid var(--color-gold);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 0 20px rgba(255, 215, 0, 0.3),
+    inset 0 0 30px rgba(255, 215, 0, 0.1);
+}
+
+.trophy-section.empty {
+  display: none;
+}
+
+.trophy-title {
+  font-family: var(--font-label);
+  color: var(--color-gold);
+  font-size: 18px;
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+  text-shadow:
+    0 0 10px var(--color-gold-glow),
+    var(--glow-red-lg);
+  letter-spacing: 2px;
+}
+
+.trophy-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+  justify-content: center;
+}
+
+.trophy-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-lg) var(--spacing-xl);
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid var(--color-gold);
+  border-radius: var(--radius-lg);
+  min-width: 120px;
+  box-shadow:
+    0 0 15px rgba(255, 215, 0, 0.4),
+    inset 0 0 20px rgba(255, 215, 0, 0.1);
+  animation: trophyGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes trophyGlow {
+  from { box-shadow: 0 0 15px rgba(255, 215, 0, 0.4), inset 0 0 20px rgba(255, 215, 0, 0.1); }
+  to { box-shadow: 0 0 25px rgba(255, 215, 0, 0.6), inset 0 0 30px rgba(255, 215, 0, 0.2); }
+}
+
+.trophy-emoji {
+  font-size: 48px;
+  margin-bottom: var(--spacing-sm);
+  filter: drop-shadow(0 0 8px var(--color-gold-glow));
+}
+
+.trophy-img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin-bottom: var(--spacing-sm);
+  border-radius: 6px;
+  filter: drop-shadow(0 0 8px var(--color-gold-glow));
+}
+
+.trophy-name {
+  font-family: var(--font-label);
+  color: var(--color-gold);
+  font-size: 14px;
+  text-align: center;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+}
+
+.trophy-click-num {
+  font-family: var(--font-display);
+  color: #ffaa00;
+  font-size: 12px;
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
+/* ============ RANKINGS TABS ============ */
+.rankings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-red-950);
+}
+
+.rankings-tab {
+  background: transparent;
+  border: 1px solid var(--color-red-800);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-family: var(--font-label);
+  font-size: 11px;
+  color: var(--color-red-400);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.rankings-tab:hover {
+  opacity: 0.8;
+  border-color: var(--color-red-600);
+}
+
+.rankings-tab.active {
+  opacity: 1;
+  background: var(--color-red-950);
+  border-color: var(--color-red-600);
+  text-shadow: var(--glow-red-sm);
+}
+
+/* ============ RANKINGS LIST ============ */
+.rankings-list-container {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.rankings-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rankings-item {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-sm);
+  border-bottom: 1px solid var(--color-red-975);
+  font-family: var(--font-display);
+}
+
+.rankings-item:last-child {
+  border-bottom: none;
+}
+
+.rankings-item.is-you {
+  background: rgba(255, 0, 0, 0.1);
+}
+
+.rankings-rank {
+  color: var(--color-red-400);
+  width: 50px;
+  text-align: left;
+  font-size: 16px;
+  text-shadow: var(--glow-red-sm);
+}
+
+.rankings-rank.gold { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.8); }
+.rankings-rank.silver { color: #c0c0c0; text-shadow: 0 0 10px rgba(192, 192, 192, 0.8); }
+.rankings-rank.bronze { color: #cd7f32; text-shadow: 0 0 10px rgba(205, 127, 50, 0.8); }
+
+.rankings-indicator {
+  font-size: 16px;
+  margin-right: var(--spacing-sm);
+  filter: grayscale(0);
+}
+
+.rankings-cursor-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  margin-right: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+}
+
+.rankings-name {
+  flex: 1;
+  color: var(--color-red-400);
+  font-family: var(--font-label);
+  font-size: 14px;
+  text-shadow: 0 0 6px rgba(255, 0, 0, 0.4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rankings-name.is-you {
+  color: var(--color-green);
+  text-shadow: 0 0 10px var(--color-green-glow);
+}
+
+.rankings-clicks {
+  color: var(--color-red-400);
+  font-size: 16px;
+  text-shadow: var(--glow-red-md);
+  min-width: 80px;
+  text-align: right;
+}
+
+/* ============ MATRIX VIEW (for game tabs) ============ */
+.rankings-matrix-header {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-sm);
+  border-bottom: 2px solid var(--color-red-900);
+  margin-bottom: var(--spacing-sm);
+  font-family: var(--font-label);
+  font-size: 11px;
+  color: var(--color-red-400);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+
+.matrix-col {
+  text-align: center;
+}
+
+.matrix-col.rank-col {
+  width: 50px;
+  text-align: left;
+}
+
+.matrix-col.type-col {
+  width: 30px;
+}
+
+.matrix-col.name-col {
+  flex: 1;
+  text-align: left;
+}
+
+.matrix-col.clicks-col {
+  min-width: 70px;
+  text-align: right;
+}
+
+.rankings-item.matrix-item {
+  display: flex;
+  align-items: center;
+}
+
+.rankings-item.matrix-item .rankings-name {
+  flex: 1;
+}
+
+.rankings-item.matrix-item .matrix-clicks {
+  min-width: 70px;
+  font-size: 14px;
+}
+
+.rankings-item.matrix-item .human-clicks {
+  color: var(--color-green);
+  text-shadow: 0 0 8px var(--color-green-glow);
+}
+
+/* Human/Bot type label */
+.rankings-type-label {
+  font-family: var(--font-label);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  margin-right: var(--spacing-sm);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.rankings-type-label.human-label {
+  color: var(--color-green);
+  border: 1px solid var(--color-green);
+  text-shadow: 0 0 6px var(--color-green-glow);
+}
+
+.rankings-type-label.bot-label {
+  color: var(--color-cyan);
+  border: 1px solid var(--color-cyan);
+  text-shadow: 0 0 6px rgba(0, 255, 255, 0.6);
+}
+
+.rankings-loading {
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 14px;
+  text-align: center;
+  padding: 40px 0;
+  text-shadow: var(--glow-red-sm);
+  opacity: 0.5;
+}
+
+/* ============ GAME STATUS PANEL (Combined) ============ */
+#game-status-panel {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-dark-overlay);
+  border: 2px solid var(--color-red-950);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  min-width: 300px;
+  z-index: var(--z-ui);
+  box-shadow: var(--shadow-inset);
+}
+
+/* Game/Epoch/Pool header row */
+.game-status-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.game-status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+}
+
+.game-status-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  text-shadow: var(--glow-red-md);
+  opacity: 0.9;
+}
+
+.game-status-label .info-help-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 8px;
+}
+
+.game-status-value {
+  font-family: var(--font-display);
+  color: var(--color-red-400);
+  font-size: 20px;
+  text-shadow:
+    var(--glow-red-md),
+    var(--glow-red-lg);
+}
+
+.game-status-value .info-suffix {
+  font-family: var(--font-label);
+  font-size: 12px;
+  margin-left: 1px;
+  opacity: 0.9;
+}
+
+/* Global stats section divider */
+.global-stats-divider {
+  height: 1px;
+  background: var(--color-red-950);
+  margin: var(--spacing-xs) 0;
+}
+
+.global-stats-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.global-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-xs) 0;
+}
+
+.global-stat-label {
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 14px;
+  text-shadow: var(--glow-red-md);
+  opacity: 0.9;
+}
+
+.global-stat-value {
+  font-family: var(--font-display);
+  color: var(--color-red-400);
+  font-size: 22px;
+  text-shadow:
+    var(--glow-red-md),
+    var(--glow-red-lg);
+}
+
+.global-stat-suffix {
+  font-family: var(--font-label);
+  color: var(--color-red-400);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-left: var(--spacing-sm);
+  opacity: 0.9;
+}
+
+.global-stat-divider {
+  height: 1px;
+  background: var(--color-red-950);
+  margin: 2px 0;
+}
+
+.global-stat-active {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.active-count {
+  font-family: var(--font-display);
+  font-size: 20px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.active-count.humans {
+  color: var(--color-green);
+  text-shadow: 0 0 8px var(--color-green-glow);
+}
+
+.active-count.bots {
+  color: var(--color-cyan);
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+}
+
+.active-label {
+  font-family: var(--font-label);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+
+.active-count.humans + .active-label {
+  color: var(--color-green);
+}
+
+.active-count.bots + .active-label {
+  color: var(--color-cyan);
+}
+
+/* Difficulty and reward per click - side by side */
+.global-stat-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.difficulty-value,
+.reward-value {
+  font-size: 18px;
+}

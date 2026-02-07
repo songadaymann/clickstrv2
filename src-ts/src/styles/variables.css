@@ -1,0 +1,85 @@
+/**
+ * CSS Custom Properties (Variables)
+ * Arcade cabinet red/black theme
+ */
+
+:root {
+  /* Colors - Primary (Red) */
+  --color-red-100: #ffcccc;
+  --color-red-200: #ff9999;
+  --color-red-300: #ff6666;
+  --color-red-400: #ff0000;
+  --color-red-500: #cc0000;
+  --color-red-600: #aa0000;
+  --color-red-700: #880000;
+  --color-red-800: #660000;
+  --color-red-900: #440000;
+  --color-red-950: #330000;
+  --color-red-975: #220000;
+  --color-red-990: #110000;
+  --color-red-dark: #0a0000;
+
+  /* Colors - Accent (Yellow/Gold) */
+  --color-gold: #ffcc00;
+  --color-gold-glow: rgba(255, 204, 0, 0.8);
+
+  /* Colors - Success (Green) */
+  --color-green: #00ff00;
+  --color-green-glow: rgba(0, 255, 0, 0.8);
+
+  /* Colors - Info (Cyan) */
+  --color-cyan: #00ffff;
+  --color-cyan-glow: rgba(0, 255, 255, 0.8);
+
+  /* Colors - Background */
+  --color-black: #000000;
+  --color-dark-overlay: rgba(0, 0, 0, 0.85);
+  --color-darker-overlay: rgba(0, 0, 0, 0.95);
+
+  /* Glow Effects */
+  --glow-red-sm: 0 0 8px rgba(255, 0, 0, 0.5);
+  --glow-red-md: 0 0 10px rgba(255, 0, 0, 0.8);
+  --glow-red-lg: 0 0 20px rgba(255, 0, 0, 0.5);
+  --glow-red-xl: 0 0 30px rgba(255, 0, 0, 0.3);
+  --glow-green-md: 0 0 10px rgba(0, 255, 0, 0.5);
+
+  /* Shadows */
+  --shadow-inset: inset 0 0 20px rgba(0, 0, 0, 0.9);
+  --shadow-inset-deep: inset 0 0 30px rgba(0, 0, 0, 0.8);
+  --shadow-arcade: 0 0 40px rgba(255, 0, 0, 0.2), 0 0 80px rgba(255, 0, 0, 0.1);
+
+  /* Typography */
+  --font-display: 'TrackmaniaSegment', 'Courier New', monospace;
+  --font-label: 'SevenSegment', 'Courier New', monospace;
+  --font-pixel: 'Press Start 2P', 'Courier New', monospace;
+  --font-mono: 'Courier New', monospace;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-2xl: 24px;
+
+  /* Border Radius */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-full: 50%;
+
+  /* Transitions */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+
+  /* Z-Index Layers */
+  --z-game: 1;
+  --z-ui: 100;
+  --z-submit: 200;
+  --z-mobile-menu: 999;
+  --z-mobile-menu-btn: 1000;
+  --z-modal: 50000;
+  --z-toast: 1500;
+  --z-cursor: 99999;
+  --z-walletconnect: 100000;
+}

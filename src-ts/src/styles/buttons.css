@@ -1,0 +1,312 @@
+/**
+ * Button styles - Arcade-style buttons
+ */
+
+/* Base arcade button style */
+.arcade-btn {
+  font-family: var(--font-label);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  padding: var(--spacing-md) var(--spacing-xl);
+  border: 2px solid;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  position: relative;
+  transition: all var(--transition-fast);
+}
+
+.arcade-btn:active {
+  transform: scale(0.98);
+  box-shadow: var(--shadow-inset) !important;
+}
+
+/* Top right buttons container */
+#top-right-btns {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  z-index: var(--z-ui);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Buy button - gold/yellow theme */
+#buy-btn {
+  background: linear-gradient(to bottom, #3d3000, #2a2000);
+  border-color: #c9a000;
+  color: #ffd700;
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 215, 0, 0.3);
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+#buy-btn:hover {
+  background: linear-gradient(to bottom, #4a3a00, #3d3000);
+  border-color: #ffd700;
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5), 0 0 25px rgba(255, 215, 0, 0.5);
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+}
+
+/* Copy address button - minimal, no border */
+#copy-address-btn {
+  background: transparent;
+  border: none;
+  color: #ffd700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+  padding: var(--spacing-sm);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+#copy-address-btn:hover {
+  color: #ffec80;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.9);
+  transform: scale(1.1);
+}
+
+#copy-address-btn:active {
+  transform: scale(0.95);
+}
+
+#copy-address-btn.copied {
+  color: #00ff00;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
+}
+
+/* Connect button */
+#connect-btn {
+  background: linear-gradient(to bottom, var(--color-red-950), var(--color-red-975));
+  border-color: var(--color-red-600);
+  color: var(--color-red-400);
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5), var(--glow-red-lg);
+  text-shadow: var(--glow-red-md);
+}
+
+#connect-btn:hover {
+  background: linear-gradient(to bottom, var(--color-red-900), var(--color-red-950));
+  border-color: var(--color-red-500);
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5), 0 0 30px rgba(255, 0, 0, 0.5);
+}
+
+#connect-btn.connected {
+  background: linear-gradient(to bottom, var(--color-red-975), var(--color-red-990));
+  border-color: var(--color-red-700);
+  color: var(--color-red-400);
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 0, 0, 0.2);
+  text-shadow: 0 0 6px rgba(255, 0, 0, 0.6);
+}
+
+#connect-btn.wrong-network {
+  background: linear-gradient(to bottom, var(--color-red-900), var(--color-red-950));
+  border-color: var(--color-red-400);
+  color: var(--color-red-400);
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5), 0 0 25px rgba(255, 0, 0, 0.6);
+  animation: pulse-warning 1s infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% { box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5), 0 0 25px rgba(255, 0, 0, 0.6); }
+  50% { box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5), 0 0 35px rgba(255, 0, 0, 0.9); }
+}
+
+/* Submit button */
+#submit-btn {
+  background: linear-gradient(to bottom, var(--color-red-975), var(--color-red-990));
+  border: 2px solid var(--color-red-700);
+  color: var(--color-red-400);
+  padding: 14px 28px;
+  cursor: pointer;
+  font-family: var(--font-label);
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  text-shadow: var(--glow-red-md);
+  box-shadow:
+    var(--shadow-inset),
+    var(--glow-red-lg);
+  position: relative;
+}
+
+#submit-btn:hover:not(:disabled) {
+  background: linear-gradient(to bottom, var(--color-red-950), var(--color-red-975));
+  border-color: var(--color-red-600);
+  text-shadow: 0 0 15px rgba(255, 0, 0, 1);
+  box-shadow:
+    var(--shadow-inset),
+    0 0 30px rgba(255, 0, 0, 0.5);
+}
+
+#submit-btn:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.95);
+}
+
+#submit-btn:disabled {
+  background: linear-gradient(to bottom, #111111, #0a0a0a);
+  border-color: #333333;
+  color: #444444;
+  cursor: not-allowed;
+  text-shadow: none;
+  box-shadow: var(--shadow-inset);
+}
+
+/* V2 Claim button - glowing green */
+#claim-btn {
+  background: linear-gradient(to bottom, #0a2a0a, #051505);
+  border: 2px solid #00ff00;
+  color: #00ff00;
+  padding: 14px 28px;
+  cursor: pointer;
+  font-family: var(--font-label);
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+  box-shadow:
+    var(--shadow-inset),
+    0 0 20px rgba(0, 255, 0, 0.4);
+  position: relative;
+}
+
+#claim-btn.has-clicks {
+  animation: claim-pulse 1.5s ease-in-out infinite;
+}
+
+#claim-btn:hover:not(:disabled) {
+  background: linear-gradient(to bottom, #0d3d0d, #082008);
+  border-color: #33ff33;
+  text-shadow: 0 0 20px rgba(0, 255, 0, 1);
+  box-shadow:
+    var(--shadow-inset),
+    0 0 40px rgba(0, 255, 0, 0.6);
+}
+
+#claim-btn:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.95);
+}
+
+#claim-btn:disabled {
+  background: linear-gradient(to bottom, #111111, #0a0a0a);
+  border-color: #333333;
+  color: #444444;
+  cursor: not-allowed;
+  text-shadow: none;
+  box-shadow: var(--shadow-inset);
+  animation: none;
+}
+
+#claim-btn.claiming {
+  animation: none;
+  cursor: wait;
+}
+
+@keyframes claim-pulse {
+  0%, 100% {
+    box-shadow: var(--shadow-inset), 0 0 20px rgba(0, 255, 0, 0.4);
+    border-color: #00ff00;
+  }
+  50% {
+    box-shadow: var(--shadow-inset), 0 0 40px rgba(0, 255, 0, 0.8), 0 0 60px rgba(0, 255, 0, 0.4);
+    border-color: #66ff66;
+  }
+}
+
+/* Help button - fixed bottom right */
+#help-btn {
+  position: fixed;
+  bottom: 15px;
+  right: 15px;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(to bottom, var(--color-red-950), var(--color-red-dark));
+  border: 3px solid var(--color-red-700);
+  color: var(--color-red-400);
+  font-family: var(--font-pixel);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-ui);
+  box-shadow: var(--glow-red-sm), inset 0 0 8px rgba(0, 0, 0, 0.5);
+  transition: all var(--transition-fast);
+  pointer-events: auto;
+}
+
+#help-btn:hover {
+  background: linear-gradient(to bottom, var(--color-red-900), var(--color-red-975));
+  border-color: var(--color-red-400);
+  box-shadow: var(--glow-red-lg), inset 0 0 8px rgba(0, 0, 0, 0.5);
+  text-shadow: var(--glow-red-md);
+}
+
+/* See rankings button - matches see-collection-btn */
+.see-rankings-btn {
+  display: block;
+  margin: var(--spacing-md) auto 0;
+  font-family: var(--font-label);
+  font-size: 14px;
+  color: var(--color-red-400);
+  background: transparent;
+  border: 1px solid var(--color-red-400);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  cursor: pointer;
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
+  transition: all var(--transition-fast);
+}
+
+.see-rankings-btn:hover {
+  background: rgba(255, 0, 0, 0.1);
+  box-shadow: var(--glow-red-lg);
+}
+
+/* See collection button */
+.see-collection-btn {
+  font-family: var(--font-label);
+  font-size: 14px;
+  color: var(--color-red-400);
+  background: transparent;
+  border: 1px solid var(--color-red-400);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  cursor: pointer;
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
+  transition: all var(--transition-fast);
+}
+
+.see-collection-btn:hover {
+  background: rgba(255, 0, 0, 0.1);
+  box-shadow: var(--glow-red-lg);
+}
+
+/* Reset cursor button */
+.reset-cursor-btn {
+  background: transparent;
+  border: 1px solid var(--color-red-700);
+  color: var(--color-red-300);
+  font-family: var(--font-label);
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  margin-left: 15px;
+  transition: all var(--transition-fast);
+}
+
+.reset-cursor-btn:hover {
+  background: var(--color-red-950);
+  border-color: var(--color-red-400);
+  color: var(--color-red-400);
+}
