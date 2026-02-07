@@ -136,13 +136,19 @@ export async function fetchRewardParams(): Promise<{ targetClicksPerEpoch: bigin
     return null;
   }
 
-  // V2 has DAILY_EMISSION_RATE as a constant but no TARGET_CLICKS_PER_EPOCH
-  // V2 uses a different reward formula that doesn't need targetClicksPerEpoch
+  // V2 computes targetClicksPerEpoch the same way the contract does:
+  //   targetClicks = (1_000_000 * EPOCH_DURATION) / 86400
+  // This scales the 1M clicks/day rate to the actual epoch length.
   if (IS_V2) {
     try {
-      const emissionRate = await gameContract.DAILY_EMISSION_RATE();
+      const [emissionRate, epochDuration] = await Promise.all([
+        gameContract.DAILY_EMISSION_RATE(),
+        gameContract.EPOCH_DURATION(),
+      ]);
+      const epochDurationSec = Number(epochDuration.toBigInt());
+      const targetClicks = BigInt(Math.floor(1_000_000 * epochDurationSec / 86400));
       return {
-        targetClicksPerEpoch: BigInt(1_000_000), // Not used in V2, but needed for display
+        targetClicksPerEpoch: targetClicks,
         dailyEmissionRate: emissionRate.toBigInt(),
       };
     } catch {
