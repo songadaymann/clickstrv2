@@ -47,7 +47,7 @@ export async function fetchServerStats(address: string): Promise<ServerStatsResp
       }
     }
 
-    const typed = data as ServerStatsResponse;
+    const typed = data as unknown as ServerStatsResponse;
     return typed.success ? typed : null;
   } catch (error) {
     console.error('Server stats error:', error);
