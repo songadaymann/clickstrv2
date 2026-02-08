@@ -127,6 +127,7 @@ export interface MergedLeaderboardEntry {
   address: string;
   name: string | null;
   totalClicks: number;
+  totalEarned?: string | null; // wei as string (for earned leaderboard)
   frontendClicks: number;
   rank?: number;
   isHuman: boolean;

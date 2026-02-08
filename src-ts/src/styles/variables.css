@@ -79,6 +79,7 @@
   --z-mobile-menu: 999;
   --z-mobile-menu-btn: 1000;
   --z-modal: 50000;
+  --z-modal-top: 50001;  /* Modals that must appear above other modals */
   --z-toast: 1500;
   --z-cursor: 99999;
   --z-walletconnect: 100000;

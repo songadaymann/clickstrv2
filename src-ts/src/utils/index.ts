@@ -7,6 +7,7 @@ export {
   formatTokens,
   formatTokensSplit,
   formatTokensLegacy,
+  formatWeiAsTokens,
   shortenAddress,
   formatDate,
   formatDuration,

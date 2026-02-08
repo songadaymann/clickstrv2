@@ -167,6 +167,11 @@
 }
 
 /* ============ NFT CLAIM MODAL ============ */
+/* Must sit above collection modal so minting from the grid works on mobile */
+#claim-modal {
+  z-index: var(--z-modal-top);
+}
+
 .claim-modal-content {
   background: var(--color-red-dark);
   border: 3px solid var(--color-red-700);

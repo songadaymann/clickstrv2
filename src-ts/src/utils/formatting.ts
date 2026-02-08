@@ -52,6 +52,21 @@ export function formatTokensLegacy(amount: number): string {
 }
 
 /**
+ * Format a wei string as a human-readable token amount
+ */
+export function formatWeiAsTokens(weiStr: string): string {
+  try {
+    const wei = BigInt(weiStr);
+    const whole = wei / BigInt(10 ** 18);
+    const frac = wei % BigInt(10 ** 18);
+    const amount = Number(whole) + Number(frac) / 1e18;
+    return formatTokens(amount);
+  } catch {
+    return '0';
+  }
+}
+
+/**
  * Shorten an Ethereum address for display
  */
 export function shortenAddress(addr: string | null | undefined): string {

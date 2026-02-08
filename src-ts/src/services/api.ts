@@ -749,12 +749,20 @@ export async function sendHeartbeatV2(address: string): Promise<HeartbeatRespons
 }
 
 /**
- * Fetch V2 leaderboard for current epoch
+ * V2 leaderboard types
+ */
+export type V2LeaderboardType = 'epoch' | 'alltime' | 'earned';
+
+/**
+ * Fetch V2 leaderboard by type
+ * - 'epoch': current epoch clicks (default)
+ * - 'alltime': all-time total clicks
+ * - 'earned': all-time earned tokens
  * Returns MergedLeaderboardEntry[] for compatibility with existing leaderboard rendering
  */
-export async function fetchV2Leaderboard(limit = 50, epoch?: number): Promise<MergedLeaderboardEntry[]> {
+export async function fetchV2Leaderboard(limit = 50, type: V2LeaderboardType = 'epoch', epoch?: number): Promise<MergedLeaderboardEntry[]> {
   try {
-    let url = `${V2_CLAIM_URL}?leaderboard=true&limit=${limit}`;
+    let url = `${V2_CLAIM_URL}?leaderboard=true&limit=${limit}&type=${type}`;
     if (epoch !== undefined) {
       url += `&epoch=${epoch}`;
     }
@@ -763,11 +771,13 @@ export async function fetchV2Leaderboard(limit = 50, epoch?: number): Promise<Me
 
     const data = await response.json() as {
       success: boolean;
+      leaderboardType?: string;
       leaderboard?: Array<{
         rank: number;
         address: string;
         name?: string | null;
-        totalClicks: number;
+        totalClicks?: number;
+        totalEarned?: string; // wei as string
       }>;
     };
     if (data.success && data.leaderboard) {
@@ -776,8 +786,9 @@ export async function fetchV2Leaderboard(limit = 50, epoch?: number): Promise<Me
       return data.leaderboard.map((entry) => ({
         address: entry.address,
         name: entry.name ?? null,
-        totalClicks: entry.totalClicks,
-        frontendClicks: entry.totalClicks, // In V2, all clicks are frontend clicks
+        totalClicks: entry.totalClicks ?? 0,
+        totalEarned: entry.totalEarned ?? null,
+        frontendClicks: entry.totalClicks ?? 0,
         rank: entry.rank,
         isHuman: true, // V2 requires Turnstile verification
       }));

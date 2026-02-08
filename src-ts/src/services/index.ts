@@ -26,6 +26,7 @@ export {
   fetchActiveUsers,
   fetchActiveUsersV2,
   fetchV2Leaderboard,
+  type V2LeaderboardType,
   fetchRecentBotActivity,
   syncAchievements,
 } from './api.ts';

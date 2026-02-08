@@ -39,6 +39,7 @@ import {
   fetchActiveUsers,
   fetchActiveUsersV2,
   fetchV2Leaderboard,
+  type V2LeaderboardType,
   syncAchievements,
   lookupEns,
   getCachedEns,
@@ -82,6 +83,7 @@ import {
   formatNumber,
   formatTokens,
   formatTokensSplit,
+  formatWeiAsTokens,
   shortenAddress,
 } from './utils/index.ts';
 
@@ -165,7 +167,7 @@ let claimedOnChain: Set<number> = new Set();
 let unlockedTiers: Set<number> = new Set();
 let serverStats: ServerStatsResponse | null = null;
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
-let leaderboardMode: 'global' | 'game' = 'global';
+let leaderboardMode: V2LeaderboardType = 'epoch';
 let currentGame: GameConfig | undefined;
 let targetClicksPerEpoch: bigint = 0n;
 let epochBudget: bigint = 0n;
@@ -186,14 +188,15 @@ let claimNftBtn: HTMLButtonElement;
 let claimLaterBtn: HTMLButtonElement;
 
 // Leaderboard toggle elements
-let leaderboardToggleGlobal: HTMLButtonElement;
-let leaderboardToggleGame: HTMLButtonElement;
+let leaderboardToggleEpoch: HTMLButtonElement;
+let leaderboardToggleAlltime: HTMLButtonElement;
+let leaderboardToggleEarned: HTMLButtonElement;
 
 // Rankings modal elements
 let rankingsTabsEl: HTMLElement;
 let rankingsListEl: HTMLElement;
 let rankingsMatrixHeaderEl: HTMLElement;
-let rankingsTab: 'global' | string = 'global'; // 'global' or game id
+let rankingsTab = 'epoch'; // V2: 'epoch'|'alltime'|'earned', V1: 'global' or game id
 
 // Lightbox elements
 let lightboxImage: HTMLImageElement;
@@ -301,8 +304,9 @@ function cacheElements(): void {
   rewardPerClickEl = getElement('reward-per-click');
 
   // Leaderboard toggle elements
-  leaderboardToggleGlobal = getElement<HTMLButtonElement>('leaderboard-toggle-global');
-  leaderboardToggleGame = getElement<HTMLButtonElement>('leaderboard-toggle-game');
+  leaderboardToggleEpoch = getElement<HTMLButtonElement>('leaderboard-toggle-epoch');
+  leaderboardToggleAlltime = getElement<HTMLButtonElement>('leaderboard-toggle-alltime');
+  leaderboardToggleEarned = getElement<HTMLButtonElement>('leaderboard-toggle-earned');
 
   // Rankings modal elements
   rankingsTabsEl = getElement('rankings-tabs');
@@ -410,8 +414,9 @@ function setupEventListeners(): void {
   setupUIVisibility();
 
   // Leaderboard toggle
-  leaderboardToggleGlobal.addEventListener('click', () => setLeaderboardMode('global'));
-  leaderboardToggleGame.addEventListener('click', () => setLeaderboardMode('game'));
+  leaderboardToggleEpoch.addEventListener('click', () => setLeaderboardMode('epoch'));
+  leaderboardToggleAlltime.addEventListener('click', () => setLeaderboardMode('alltime'));
+  leaderboardToggleEarned.addEventListener('click', () => setLeaderboardMode('earned'));
 
   // Lightbox
   setupLightboxListeners();
@@ -1771,19 +1776,19 @@ function updateSubmitButton(): void {
 // ============ Leaderboard ============
 
 /**
- * Set the leaderboard mode (global or current game)
+ * Set the leaderboard mode (epoch, alltime clicks, or earned)
  */
-function setLeaderboardMode(mode: 'global' | 'game'): void {
+function setLeaderboardMode(mode: V2LeaderboardType): void {
   leaderboardMode = mode;
 
   // Update toggle button states
-  if (mode === 'global') {
-    addClass(leaderboardToggleGlobal, 'active');
-    removeClass(leaderboardToggleGame, 'active');
-  } else {
-    removeClass(leaderboardToggleGlobal, 'active');
-    addClass(leaderboardToggleGame, 'active');
+  const toggles = [leaderboardToggleEpoch, leaderboardToggleAlltime, leaderboardToggleEarned];
+  for (const btn of toggles) {
+    removeClass(btn, 'active');
   }
+  if (mode === 'epoch') addClass(leaderboardToggleEpoch, 'active');
+  else if (mode === 'alltime') addClass(leaderboardToggleAlltime, 'active');
+  else if (mode === 'earned') addClass(leaderboardToggleEarned, 'active');
 
   // Refresh leaderboard
   fetchLeaderboard();
@@ -1791,13 +1796,13 @@ function setLeaderboardMode(mode: 'global' | 'game'): void {
 
 async function fetchLeaderboard(): Promise<void> {
   if (IS_V2) {
-    // V2 mode: Use V2 leaderboard API
-    leaderboardData = await fetchV2Leaderboard(10);
-  } else if (leaderboardMode === 'global') {
-    // V1 Global: all-time frontend clicks from Redis
+    // V2 mode: Use V2 leaderboard API with type
+    leaderboardData = await fetchV2Leaderboard(10, leaderboardMode);
+  } else if (leaderboardMode === 'epoch') {
+    // V1 fallback: all-time frontend clicks from Redis
     leaderboardData = await fetchGlobalLeaderboard(10);
   } else {
-    // V1 Game: on-chain clicks from current game's subgraph
+    // V1 fallback: on-chain clicks from current game's subgraph
     if (currentGame) {
       leaderboardData = await fetchGameLeaderboard(currentGame.subgraphUrl, 10);
     } else {
@@ -1810,14 +1815,17 @@ async function fetchLeaderboard(): Promise<void> {
 
 function renderLeaderboard(): void {
   if (leaderboardData.length === 0) {
-    const message = leaderboardMode === 'global'
-      ? 'No human clicks yet!'
-      : 'No on-chain clicks yet!';
-    setHtml(leaderboardListEl, `<li class="leaderboard-loading">${message}</li>`);
+    const emptyMessages: Record<V2LeaderboardType, string> = {
+      epoch: 'No clicks this epoch!',
+      alltime: 'No clicks yet!',
+      earned: 'No earnings yet!',
+    };
+    setHtml(leaderboardListEl, `<li class="leaderboard-loading">${emptyMessages[leaderboardMode]}</li>`);
     return;
   }
 
   const userAddrLower = gameState.userAddress?.toLowerCase();
+  const isEarned = leaderboardMode === 'earned';
 
   const html = leaderboardData
     .map((entry, index) => {
@@ -1837,14 +1845,19 @@ function renderLeaderboard(): void {
       const milestone = getHighestMilestone(entry.totalClicks);
       const iconHtml = milestone
         ? `<img src="cursors/${escapeHtml(milestone.cursor)}.png" class="leaderboard-cursor-icon" alt="${escapeHtml(milestone.name)}">`
-        : `<span class="leaderboard-indicator">${entry.isHuman ? '🧑' : '🤖'}</span>`;
+        : `<span class="leaderboard-indicator">🧑</span>`;
+
+      // Show earned amount for earned tab, click count otherwise
+      const valueHtml = isEarned && entry.totalEarned
+        ? `<span class="leaderboard-clicks leaderboard-earned">${formatWeiAsTokens(entry.totalEarned)}</span>`
+        : `<span class="leaderboard-clicks">${formatNumber(entry.totalClicks)}</span>`;
 
       return `
         <li class="leaderboard-item ${isYou ? 'is-you' : ''}" data-address="${safeAddress}">
           <span class="leaderboard-rank ${rankClass}">${entry.rank}</span>
           ${iconHtml}
           <span class="leaderboard-name ${isYou ? 'is-you' : ''}">${displayName}${isYou ? ' (you)' : ''}</span>
-          <span class="leaderboard-clicks">${formatNumber(entry.totalClicks)}</span>
+          ${valueHtml}
         </li>
       `;
     })
@@ -2155,14 +2168,27 @@ function showRankingsModal(): void {
  * Render the tabs for the rankings modal
  */
 function renderRankingsTabs(): void {
-  const games = getAllGames();
+  let tabsHtml = '';
 
-  // Build tabs HTML
-  let tabsHtml = `<button class="rankings-tab${rankingsTab === 'global' ? ' active' : ''}" data-tab="global">All-Time Humans</button>`;
-
-  for (const game of games) {
-    const isActive = rankingsTab === game.id;
-    tabsHtml += `<button class="rankings-tab${isActive ? ' active' : ''}" data-tab="${game.id}">${game.name}</button>`;
+  if (IS_V2) {
+    // V2 mode: 3 tabs matching the leaderboard panel
+    const tabs: { id: string; label: string }[] = [
+      { id: 'epoch', label: 'Current Epoch' },
+      { id: 'alltime', label: 'All-Time Clicks' },
+      { id: 'earned', label: 'All-Time Earned' },
+    ];
+    for (const tab of tabs) {
+      const isActive = rankingsTab === tab.id;
+      tabsHtml += `<button class="rankings-tab${isActive ? ' active' : ''}" data-tab="${tab.id}">${tab.label}</button>`;
+    }
+  } else {
+    // V1 mode: global + per-game tabs
+    const games = getAllGames();
+    tabsHtml = `<button class="rankings-tab${rankingsTab === 'global' ? ' active' : ''}" data-tab="global">All-Time Humans</button>`;
+    for (const game of games) {
+      const isActive = rankingsTab === game.id;
+      tabsHtml += `<button class="rankings-tab${isActive ? ' active' : ''}" data-tab="${game.id}">${game.name}</button>`;
+    }
   }
 
   setHtml(rankingsTabsEl, tabsHtml);
@@ -2171,7 +2197,7 @@ function renderRankingsTabs(): void {
   const tabBtns = rankingsTabsEl.querySelectorAll('.rankings-tab');
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      const tabId = btn.getAttribute('data-tab') || 'global';
+      const tabId = btn.getAttribute('data-tab') || (IS_V2 ? 'epoch' : 'global');
       setRankingsTab(tabId);
     });
   });
@@ -2207,10 +2233,11 @@ async function loadRankingsForTab(tabId: string): Promise<void> {
 
   try {
     if (IS_V2) {
-      // V2 mode: Use V2 leaderboard API
+      // V2 mode: Use V2 leaderboard API with type
       rankingsMatrixHeaderEl.style.display = 'none';
-      const data = await fetchV2Leaderboard(50);
-      renderRankingsList(data);
+      const type = (tabId === 'epoch' || tabId === 'alltime' || tabId === 'earned') ? tabId as V2LeaderboardType : 'epoch';
+      const data = await fetchV2Leaderboard(50, type);
+      renderRankingsList(data, type === 'earned');
     } else if (tabId === 'global') {
       // V1 Global: all-time frontend clicks from Redis (simple list)
       rankingsMatrixHeaderEl.style.display = 'none';
@@ -2237,12 +2264,15 @@ async function loadRankingsForTab(tabId: string): Promise<void> {
 /**
  * Render the rankings list
  */
-function renderRankingsList(data: MergedLeaderboardEntry[]): void {
+function renderRankingsList(data: MergedLeaderboardEntry[], isEarned = false): void {
   if (data.length === 0) {
-    const message = rankingsTab === 'global'
-      ? 'No clicks recorded yet!'
-      : 'No on-chain submissions yet!';
-    setHtml(rankingsListEl, `<li class="rankings-loading">${message}</li>`);
+    const emptyMessages: Record<string, string> = {
+      epoch: 'No clicks this epoch!',
+      alltime: 'No clicks recorded yet!',
+      earned: 'No earnings yet!',
+      global: 'No clicks recorded yet!',
+    };
+    setHtml(rankingsListEl, `<li class="rankings-loading">${emptyMessages[rankingsTab] || 'No data yet!'}</li>`);
     return;
   }
 
@@ -2263,14 +2293,19 @@ function renderRankingsList(data: MergedLeaderboardEntry[]): void {
       const milestone = getHighestMilestone(entry.totalClicks);
       const iconHtml = milestone
         ? `<img src="cursors/${milestone.cursor}.png" class="rankings-cursor-icon" alt="${milestone.name}">`
-        : `<span class="rankings-indicator">${entry.isHuman ? '🧑' : '🤖'}</span>`;
+        : `<span class="rankings-indicator">🧑</span>`;
+
+      // Show earned amount for earned tab, click count otherwise
+      const valueHtml = isEarned && entry.totalEarned
+        ? `<span class="rankings-clicks rankings-earned">${formatWeiAsTokens(entry.totalEarned)}</span>`
+        : `<span class="rankings-clicks">${formatNumber(entry.totalClicks)}</span>`;
 
       return `
         <li class="rankings-item ${isYou ? 'is-you' : ''}" data-address="${entry.address}">
           <span class="rankings-rank ${rankClass}">${entry.rank}</span>
           ${iconHtml}
           <span class="rankings-name ${isYou ? 'is-you' : ''}">${displayName}${isYou ? ' (you)' : ''}</span>
-          <span class="rankings-clicks">${formatNumber(entry.totalClicks)}</span>
+          ${valueHtml}
         </li>
       `;
     })
