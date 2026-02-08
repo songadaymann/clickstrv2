@@ -64,6 +64,16 @@ export function hasClass(element: Element, className: string): boolean {
 }
 
 /**
+ * Escape a string for safe insertion into HTML.
+ * Prevents XSS when interpolating user-supplied data into templates.
+ */
+export function escapeHtml(str: string): string {
+  const div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+/**
  * Set text content of an element
  */
 export function setText(element: Element, text: string): void {

@@ -127,7 +127,7 @@ export function startMining(onFound: (nonce: bigint) => void): void {
   miningWorker.onmessage = (e: MessageEvent<FoundMessage>) => {
     if (e.data.type === 'FOUND') {
       const nonce = BigInt(e.data.nonce);
-      console.log(`[Mining] Worker found nonce: ${nonce}`);
+      // Nonce found — hand off to callback
 
       // Save callback reference before terminateMining clears it
       const callback = onNonceFound;
@@ -136,7 +136,6 @@ export function startMining(onFound: (nonce: bigint) => void): void {
       gameState.setMiningComplete();
 
       if (callback) {
-        console.log('[Mining] Calling callback with nonce');
         callback(nonce);
       } else {
         console.warn('[Mining] No callback registered!');

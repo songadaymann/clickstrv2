@@ -691,8 +691,7 @@ export async function submitClicksV2(
       body.turnstileToken = turnstileToken;
     }
 
-    console.log('[V2 API] Submitting to:', V2_CLAIM_URL);
-    console.log('[V2 API] Body:', { address, noncesCount: nonces.length, hasTurnstile: !!turnstileToken });
+    // Sensitive data (address, nonces) intentionally not logged
 
     const response = await fetch(V2_CLAIM_URL, {
       method: 'POST',
@@ -700,10 +699,7 @@ export async function submitClicksV2(
       body: JSON.stringify(body),
     });
 
-    console.log('[V2 API] Response status:', response.status);
-
     const result = await response.json() as V2SubmitClicksResponse;
-    console.log('[V2 API] Response data:', result);
 
     if (response.status === 403 && result.requiresVerification) {
       return { success: false, requiresVerification: true };

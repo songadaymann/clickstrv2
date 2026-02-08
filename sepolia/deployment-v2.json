@@ -11,18 +11,18 @@
   },
   "contracts": {
     "clickToken": "0x120E2fCf5b26FC49Fe3d1E7c851346c898619C28",
-    "clickRegistry": "0xEfd58d7aA328561606451c69D86202330a9E8d4D",
+    "clickRegistry": "0x8945ad6dbA24C90998175bC007d6B2B81c650a61",
     "clickstrTreasury": "0x82378b6C7247b02f4b985Aca079a0A85E0D2cbAe",
-    "clickstrGameV2": "0x3Ad5468Dd1eDBe7da14F993b4ab1d9Fe331873f1",
-    "clickstrNFTV2": "0x43D37A412A9Bca7274242F26cccfa8d4B0025213"
+    "clickstrGameV2": "0xAce0502aC3DE5BcDa8BAF8499D9e4f2a2c295430",
+    "clickstrNFTV2": "0xDD866DbCbf3120C62e46cdB97183aB3F71999ebd"
   },
   "signers": {
     "attestation": "0xd4eEf240c88eA5Dc72de6fB7774065CEE22F7Afd",
     "nft": "0xf55E4fac663ad8db80284620F97D95391ab002EF"
   },
   "deployer": "0xAd9fDaD276AB1A430fD03177A07350CD7C61E897",
-  "deployedAt": "2026-02-07T12:07:24.328Z",
-  "gameStartTime": "2026-02-07T12:07:24.000Z",
-  "gameEndTime": "2026-02-08T12:07:24.000Z",
-  "blockNumber": 10210372
+  "deployedAt": "2026-02-08T16:56:13.555Z",
+  "gameStartTime": "2026-02-08T16:56:12.000Z",
+  "gameEndTime": "2026-02-09T16:56:12.000Z",
+  "blockNumber": 10218746
 }

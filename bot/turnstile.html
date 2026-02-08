@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head><title>Turnstile Solver</title></head>
+<body>
+  <h3>Turnstile Token Farm</h3>
+  <div id="turnstile-widget"></div>
+  <pre id="status">Waiting for Turnstile...</pre>
+
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad" async defer></script>
+  <script>
+    // Expose token globally so Puppeteer can read it via page.evaluate()
+    window.__turnstileToken = null;
+    window.__tokenTime = null;
+    window.__solveCount = 0;
+
+    function onTurnstileLoad() {
+      turnstile.render('#turnstile-widget', {
+        sitekey: '0x4AAAAAACV0UOMmCeG_g2Jr',
+        callback: function(token) {
+          window.__turnstileToken = token;
+          window.__tokenTime = Date.now();
+          window.__solveCount++;
+          document.getElementById('status').textContent =
+            'Token #' + window.__solveCount + ' received (' + token.slice(0, 30) + '...)';
+        },
+        'expired-callback': function() {
+          window.__turnstileToken = null;
+          document.getElementById('status').textContent = 'Token expired, re-solving...';
+          // Turnstile auto-refreshes by default
+        },
+        'error-callback': function() {
+          document.getElementById('status').textContent = 'Turnstile error!';
+        },
+      });
+    }
+  </script>
+</body>
+</html>

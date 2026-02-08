@@ -452,6 +452,7 @@
   width: 90vw;
   max-width: 900px;
   max-height: 85vh;
+  overflow-y: auto;
   box-shadow:
     var(--shadow-inset-deep),
     0 0 40px rgba(255, 0, 0, 0.3);

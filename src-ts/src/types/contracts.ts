@@ -31,6 +31,10 @@ export const CLICKSTR_V2_ABI = [
   'function getGameStats() external view returns (uint256 poolRemaining_, uint256 currentEpoch_, uint256 totalEpochs_, uint256 gameStartTime_, uint256 gameEndTime_, uint256 seasonNumber_, bool started_, bool ended_)',
   'function getUserStats(address user) external view returns (uint256 totalClicks_, uint256 totalEarned_, uint256 epochsWon_)',
   'function hasClaimed(address user, uint256 epoch) external view returns (bool)',
+  'function seasonPool() external view returns (uint256)',
+  'function poolRemaining() external view returns (uint256)',
+  'function TOTAL_EPOCHS() external view returns (uint256)',
+  'function EPOCH_DURATION() external view returns (uint256)',
 ] as const;
 
 /** Type for contract ABI */

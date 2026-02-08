@@ -13,12 +13,12 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     chainId: 11155111,
     chainName: 'Sepolia',
     rpcUrl: import.meta.env.VITE_SEPOLIA_RPC_URL || '',
-    contractAddress: '0x3Ad5468Dd1eDBe7da14F993b4ab1d9Fe331873f1', // ClickstrGameV2 Season 1 (6 epochs x 4h = 24h)
+    contractAddress: '0xAce0502aC3DE5BcDa8BAF8499D9e4f2a2c295430', // ClickstrGameV2 Season 1 (6 epochs x 4h = 24h)
     tokenAddress: '0x120E2fCf5b26FC49Fe3d1E7c851346c898619C28', // MockClickToken (V2 test - 1B supply)
-    nftContractAddress: '0x43D37A412A9Bca7274242F26cccfa8d4B0025213', // ClickstrNFTV2 (fresh registry)
+    nftContractAddress: '0xDD866DbCbf3120C62e46cdB97183aB3F71999ebd', // ClickstrNFTV2 (fresh registry)
     turnstileSiteKey: '0x4AAAAAACV0UOMmCeG_g2Jr',
     // V2 additional addresses:
-    // Registry: 0xEfd58d7aA328561606451c69D86202330a9E8d4D
+    // Registry: 0x8945ad6dbA24C90998175bC007d6B2B81c650a61
     // Treasury: 0x82378b6C7247b02f4b985Aca079a0A85E0D2cbAe
   },
   mainnet: {

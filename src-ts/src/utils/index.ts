@@ -21,6 +21,7 @@ export {
   removeClass,
   toggleClass,
   hasClass,
+  escapeHtml,
   setText,
   setHtml,
   show,

@@ -128,46 +128,70 @@ export async function fetchDifficultyTarget(): Promise<bigint | null> {
 
 /**
  * Fetch reward calculation parameters from contract
- * Note: V2 uses different constant names and values
+ * V2 uses a flat per-epoch budget capped by pool reality:
+ *   epochBudget = min(seasonPool / totalEpochs, poolRemaining / remainingEpochs)
+ * Returns targetClicksPerEpoch and epochBudget for display calculations
  */
-export async function fetchRewardParams(): Promise<{ targetClicksPerEpoch: bigint; dailyEmissionRate: bigint } | null> {
+export async function fetchRewardParams(): Promise<{ targetClicksPerEpoch: bigint; epochBudget: bigint } | null> {
   if (!gameContract) {
     console.error('[Contracts] Game contract not initialized');
     return null;
   }
 
-  // V2 computes targetClicksPerEpoch the same way the contract does:
-  //   targetClicks = (1_000_000 * EPOCH_DURATION) / 86400
-  // This scales the 1M clicks/day rate to the actual epoch length.
+  // V2: flat per-epoch budget, capped by fair share of remaining pool
+  // Matches contract logic: min(seasonPool/TOTAL_EPOCHS, poolRemaining/remainingEpochs)
   if (IS_V2) {
     try {
-      const [emissionRate, epochDuration] = await Promise.all([
-        gameContract.DAILY_EMISSION_RATE(),
+      const [pool, totalEpochs, epochDuration, poolRemainingRaw] = await Promise.all([
+        gameContract.seasonPool(),
+        gameContract.TOTAL_EPOCHS(),
         gameContract.EPOCH_DURATION(),
+        gameContract.poolRemaining(),
       ]);
-      const epochDurationSec = Number(epochDuration.toBigInt());
+      const seasonPoolWei: bigint = BigInt(pool.toString());
+      const epochsBig: bigint = BigInt(totalEpochs.toString());
+      const poolRemainingWei: bigint = BigInt(poolRemainingRaw.toString());
+      const epochDurationSec = Number(epochDuration.toString());
       const targetClicks = BigInt(Math.floor(1_000_000 * epochDurationSec / 86400));
+
+      // Flat budget
+      const flatBudget = seasonPoolWei / epochsBig;
+
+      // Fair budget based on remaining pool and remaining epochs
+      // Clamp to >= 1 to avoid division by zero when game has ended or epoch > totalEpochs
+      const currentEpoch = BigInt(gameState.currentEpoch || 1);
+      const rawRemaining = epochsBig - currentEpoch + 1n;
+      const remainingEpochs = rawRemaining > 0n ? rawRemaining : 1n;
+      const fairBudget = poolRemainingWei / remainingEpochs;
+
+      // Use the lesser of the two (matches contract)
+      const epochBudget = flatBudget < fairBudget ? flatBudget : fairBudget;
+
       return {
         targetClicksPerEpoch: targetClicks,
-        dailyEmissionRate: emissionRate.toBigInt(),
+        epochBudget,
       };
     } catch {
-      // Fallback to hardcoded values if contract call fails
+      // Fallback
       return {
         targetClicksPerEpoch: BigInt(1_000_000),
-        dailyEmissionRate: BigInt(200), // 2% in basis points
+        epochBudget: BigInt(0),
       };
     }
   }
 
+  // V1 path (legacy) — compute epochBudget from emission rate and pool
   try {
     const [targetClicks, emissionRate] = await Promise.all([
       gameContract.TARGET_CLICKS_PER_EPOCH(),
       gameContract.DAILY_EMISSION_RATE(),
     ]);
+    // Approximate epoch budget using poolRemaining * emissionRate / 10000
+    const poolWei = BigInt(Math.floor(gameState.poolRemaining * 1e18));
+    const budget = (poolWei * emissionRate.toBigInt()) / 10000n;
     return {
       targetClicksPerEpoch: targetClicks.toBigInt(),
-      dailyEmissionRate: emissionRate.toBigInt(),
+      epochBudget: budget,
     };
   } catch (error) {
     console.error('[Contracts] Error fetching reward params:', error);
@@ -397,6 +421,15 @@ export async function claimV2Reward(
   const signer = getSigner();
   if (!signer) {
     throw new Error('Wallet not connected');
+  }
+
+  // Security: validate contract address matches our known config to prevent
+  // a compromised API from redirecting transactions to a malicious contract
+  const expectedAddress = CONFIG.contractAddress.toLowerCase();
+  if (contractAddress.toLowerCase() !== expectedAddress) {
+    throw new Error(
+      `Contract address mismatch: API returned ${contractAddress}, expected ${expectedAddress}`
+    );
   }
 
   const v2Contract = new ethers.Contract(contractAddress, CLICKSTR_V2_ABI, signer);

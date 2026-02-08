@@ -175,6 +175,15 @@
     width: 95vw;
   }
 
+  .collection-mint-btn {
+    font-size: 9px;
+    padding: 3px 8px;
+  }
+
+  .collection-item-name {
+    font-size: 11px;
+  }
+
   /* Help modal */
   .help-modal-content {
     padding: 24px 20px;

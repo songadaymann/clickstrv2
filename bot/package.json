@@ -1,0 +1,14 @@
+{
+  "name": "clickstr-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "bot": "node click-bot.mjs"
+  },
+  "dependencies": {
+    "ethereum-cryptography": "^2.2.1",
+    "puppeteer": "^24.37.2",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}

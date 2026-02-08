@@ -39,7 +39,6 @@ import {
   fetchActiveUsers,
   fetchActiveUsersV2,
   fetchV2Leaderboard,
-  fetchRecentBotActivity,
   syncAchievements,
   lookupEns,
   getCachedEns,
@@ -77,6 +76,7 @@ import {
   addClass,
   removeClass,
   toggleClass,
+  escapeHtml,
   setText,
   setHtml,
   formatNumber,
@@ -151,7 +151,6 @@ let turnstileModal: HTMLElement;
 
 // Global stats panel elements
 let activeHumansEl: HTMLElement;
-let activeBotsEl: HTMLElement;
 let gameStatusEl: HTMLElement;
 let difficultyDisplayEl: HTMLElement;
 let rewardPerClickEl: HTMLElement;
@@ -163,12 +162,13 @@ let turnstileToken: string | null = null;
 let turnstileWidgetId: string | null = null;
 let leaderboardData: MergedLeaderboardEntry[] = [];
 let claimedOnChain: Set<number> = new Set();
+let unlockedTiers: Set<number> = new Set();
 let serverStats: ServerStatsResponse | null = null;
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 let leaderboardMode: 'global' | 'game' = 'global';
 let currentGame: GameConfig | undefined;
 let targetClicksPerEpoch: bigint = 0n;
-let dailyEmissionRate: bigint = 0n;
+let epochBudget: bigint = 0n;
 let v2ClaimableEpochs: V2ClaimableEpoch[] = [];
 let v2IsClaimingInProgress = false;
 
@@ -296,7 +296,6 @@ function cacheElements(): void {
 
   // Global stats panel elements
   activeHumansEl = getElement('active-humans');
-  activeBotsEl = getElement('active-bots');
   gameStatusEl = getElement('game-status');
   difficultyDisplayEl = getElement('difficulty-display');
   rewardPerClickEl = getElement('reward-per-click');
@@ -715,6 +714,29 @@ function renderV2ClaimList(): void {
   });
 }
 
+// ---- Multi-tab claim lock (localStorage) ----
+const CLAIM_LOCK_KEY = 'clickstr_claim_lock';
+const CLAIM_LOCK_TTL_MS = 120_000; // 2 minutes max
+
+function acquireClaimLock(epoch: number): boolean {
+  const raw = localStorage.getItem(CLAIM_LOCK_KEY);
+  if (raw) {
+    try {
+      const lock = JSON.parse(raw) as { epoch: number; ts: number };
+      if (Date.now() - lock.ts < CLAIM_LOCK_TTL_MS) {
+        // Another tab holds a fresh lock
+        return false;
+      }
+    } catch { /* stale or corrupt — ok to overwrite */ }
+  }
+  localStorage.setItem(CLAIM_LOCK_KEY, JSON.stringify({ epoch, ts: Date.now() }));
+  return true;
+}
+
+function releaseClaimLock(): void {
+  localStorage.removeItem(CLAIM_LOCK_KEY);
+}
+
 /**
  * Handle claiming a single epoch
  */
@@ -726,6 +748,13 @@ async function handleV2ClaimSingle(e: Event): Promise<void> {
   const epochData = v2ClaimableEpochs[idx];
 
   if (!epochData) return;
+
+  // Multi-tab guard: prevent duplicate claims from another browser tab
+  if (!acquireClaimLock(epochData.epoch)) {
+    btn.textContent = 'Busy';
+    setTimeout(() => { btn.textContent = 'Claim'; }, 2000);
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = '...';
@@ -743,6 +772,7 @@ async function handleV2ClaimSingle(e: Event): Promise<void> {
         btn.disabled = false;
       }, 2000);
       v2IsClaimingInProgress = false;
+      releaseClaimLock();
       return;
     }
 
@@ -782,6 +812,7 @@ async function handleV2ClaimSingle(e: Event): Promise<void> {
     }, 2000);
   } finally {
     v2IsClaimingInProgress = false;
+    releaseClaimLock();
   }
 }
 
@@ -791,8 +822,16 @@ async function handleV2ClaimSingle(e: Event): Promise<void> {
 async function handleV2ClaimAll(): Promise<void> {
   if (v2IsClaimingInProgress || v2ClaimableEpochs.length === 0) return;
 
+  // Multi-tab guard
+  if (!acquireClaimLock(-1)) {
+    v2ClaimAllBtn.textContent = 'Busy';
+    setTimeout(() => { v2ClaimAllBtn.textContent = 'Claim All'; }, 2000);
+    return;
+  }
+
   v2ClaimAllBtn.disabled = true;
   v2ClaimAllBtn.textContent = 'Claiming...';
+  v2IsClaimingInProgress = true;
 
   // For now, claim one at a time (could batch later)
   for (const epoch of [...v2ClaimableEpochs]) {
@@ -826,6 +865,8 @@ async function handleV2ClaimAll(): Promise<void> {
 
   // Refresh user stats
   refreshUserStats();
+  v2IsClaimingInProgress = false;
+  releaseClaimLock();
 }
 
 /**
@@ -988,7 +1029,7 @@ async function onConnected(): Promise<void> {
   const rewardParams = await fetchRewardParams();
   if (rewardParams) {
     targetClicksPerEpoch = rewardParams.targetClicksPerEpoch;
-    dailyEmissionRate = rewardParams.dailyEmissionRate;
+    epochBudget = rewardParams.epochBudget;
   }
 
   // Update difficulty and reward display
@@ -1278,11 +1319,7 @@ async function handleV2Submit(nonces: readonly bigint[]): Promise<void> {
 async function handleV2Claim(e: Event): Promise<void> {
   e.stopPropagation();
 
-  console.log('[V2 Claim] handleV2Claim called');
-  console.log('[V2 Claim] pendingNonces:', gameState.pendingNonces.length);
-  console.log('[V2 Claim] turnstileToken:', turnstileToken ? 'present' : 'null');
-  console.log('[V2 Claim] userAddress:', gameState.userAddress);
-  console.log('[V2 Claim] currentEpoch:', gameState.currentEpoch);
+  // Debug details intentionally omitted (security: avoid logging addresses/tokens)
 
   const nonces = gameState.pendingNonces.slice(0, CONFIG.maxBatchSize);
   if (nonces.length < CONFIG.minBatchSize) {
@@ -1673,11 +1710,10 @@ function updateDifficultyDisplay(): void {
   setText(difficultyDisplayEl, difficultyStr);
 
   // Calculate estimated reward per click
-  // Formula: (poolRemaining * dailyEmissionRate / 10000) / targetClicksPerEpoch / 2
+  // Formula: epochBudget / targetClicksPerEpoch / 2
+  // epochBudget = min(seasonPool/totalEpochs, poolRemaining/remainingEpochs)
   // This gives gross reward per click, then we take half (player gets 50%)
-  if (targetClicksPerEpoch > 0n && dailyEmissionRate > 0n) {
-    const poolWei = BigInt(Math.floor(gameState.poolRemaining * 1e18));
-    const epochBudget = (poolWei * dailyEmissionRate) / 10000n;
+  if (targetClicksPerEpoch > 0n && epochBudget > 0n) {
     const grossPerClick = epochBudget / targetClicksPerEpoch;
     const playerPerClick = grossPerClick / 2n;
 
@@ -1789,19 +1825,22 @@ function renderLeaderboard(): void {
       const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : '';
 
       // Priority: server name > cached ENS > shortened address
+      // All user-supplied strings are escaped to prevent XSS
       const cachedEns = getCachedEns(entry.address);
-      const displayName =
+      const rawName =
         entry.name && entry.name !== 'Anonymous'
           ? entry.name
           : cachedEns || shortenAddress(entry.address);
+      const displayName = escapeHtml(rawName);
+      const safeAddress = escapeHtml(entry.address);
 
       const milestone = getHighestMilestone(entry.totalClicks);
       const iconHtml = milestone
-        ? `<img src="cursors/${milestone.cursor}.png" class="leaderboard-cursor-icon" alt="${milestone.name}">`
+        ? `<img src="cursors/${escapeHtml(milestone.cursor)}.png" class="leaderboard-cursor-icon" alt="${escapeHtml(milestone.name)}">`
         : `<span class="leaderboard-indicator">${entry.isHuman ? '🧑' : '🤖'}</span>`;
 
       return `
-        <li class="leaderboard-item ${isYou ? 'is-you' : ''}" data-address="${entry.address}">
+        <li class="leaderboard-item ${isYou ? 'is-you' : ''}" data-address="${safeAddress}">
           <span class="leaderboard-rank ${rankClass}">${entry.rank}</span>
           ${iconHtml}
           <span class="leaderboard-name ${isYou ? 'is-you' : ''}">${displayName}${isYou ? ' (you)' : ''}</span>
@@ -1822,14 +1861,10 @@ function renderLeaderboard(): void {
  * Updates the DOM when names are resolved
  */
 async function resolveLeaderboardEns(): Promise<void> {
-  // Debug: log what names we have
-  console.log('[Leaderboard] Entry names:', leaderboardData.map(e => ({ addr: e.address?.slice(0,10), name: e.name, cached: getCachedEns(e.address) })));
-
   const addressesToResolve = leaderboardData
     .filter(entry => (!entry.name || entry.name === 'Anonymous') && !getCachedEns(entry.address))
     .map(entry => entry.address);
 
-  console.log('[Leaderboard] ENS addresses to resolve:', addressesToResolve.length);
   if (addressesToResolve.length === 0) return;
 
   // Resolve all addresses in parallel
@@ -1838,13 +1873,11 @@ async function resolveLeaderboardEns(): Promise<void> {
       if (ensName) {
         // Update the DOM element with the ENS name
         const item = leaderboardListEl.querySelector(`[data-address="${address}"]`);
-        console.log('[Leaderboard] DOM update for', address, ':', item ? 'found' : 'NOT FOUND');
         if (item) {
           const nameEl = item.querySelector('.leaderboard-name');
           if (nameEl) {
             const isYou = gameState.userAddress?.toLowerCase() === address.toLowerCase();
             nameEl.textContent = ensName + (isYou ? ' (you)' : '');
-            console.log('[Leaderboard] Updated name to:', ensName);
           }
         }
       }
@@ -1911,22 +1944,15 @@ function stopHeartbeat(): void {
 }
 
 /**
- * Fetch and display global stats (active humans + bots)
+ * Fetch and display global stats (active players)
  */
 async function updateGlobalStats(): Promise<void> {
   try {
-    // Fetch active humans from our API (heartbeat-based)
-    const activeUsersPromise = IS_V2 ? fetchActiveUsersV2() : fetchActiveUsers();
-
-    // Fetch recent bot activity from subgraph (addresses that submitted in last 5 mins)
-    // In V2 mode, there are no bots (human-only via Turnstile)
-    const botActivityPromise = IS_V2 ? Promise.resolve(0) : fetchRecentBotActivity(5);
-
-    const [activeUsers, recentBots] = await Promise.all([activeUsersPromise, botActivityPromise]);
+    // Fetch active players from our API (heartbeat-based)
+    const activeUsers = IS_V2 ? await fetchActiveUsersV2() : await fetchActiveUsers();
 
     // Update displays
     setText(activeHumansEl, activeUsers.activeHumans.toString());
-    setText(activeBotsEl, recentBots.toString());
 
     // Update all-time clicks in header with k/M suffix formatting
     if (activeUsers.globalClicks !== undefined) {
@@ -2023,50 +2049,49 @@ async function requestV2ClaimAttestation(epoch: number): Promise<V2ClaimSignatur
     return { error: 'Wallet not connected' };
   }
 
-  console.log('[V2 Attestation] Requesting signature for epoch:', epoch);
-
   let response = await requestV2ClaimSignature(gameState.userAddress, epoch, {
     turnstileToken,
   });
 
-  console.log('[V2 Attestation] Initial response:', response);
-
   if (response.requiresVerification) {
-    console.log('[V2 Attestation] Needs Turnstile verification');
     turnstileToken = null;
     showTurnstileModal();
     return response;
   }
 
   if (response.requiresSignature && response.challenge) {
-    console.log('[V2 Attestation] Needs wallet signature, challenge:', response.challenge);
     const signer = getSigner();
     if (!signer) {
-      console.error('[V2 Attestation] No signer available');
       return { error: 'Wallet not connected' };
     }
 
     // Store the challenge to send back with the signature
     const originalChallenge = response.challenge;
 
-    console.log('[V2 Attestation] Prompting wallet to sign...');
+    // Security: verify the challenge is bound to this specific claim request.
+    // A well-formed challenge should reference our address and epoch to prevent
+    // a compromised API from issuing generic challenges that could be replayed.
+    const challengeLower = originalChallenge.toLowerCase();
+    if (gameState.userAddress && !challengeLower.includes(gameState.userAddress.toLowerCase().slice(2))) {
+      console.error('[V2 Attestation] Challenge does not reference our address — refusing to sign');
+      return { error: 'Invalid challenge (address mismatch)' };
+    }
+
     try {
       const walletSignature = await signer.signMessage(originalChallenge);
-      console.log('[V2 Attestation] Got wallet signature, retrying...');
 
       response = await requestV2ClaimSignature(gameState.userAddress, epoch, {
         turnstileToken,
         walletSignature,
         challenge: originalChallenge,
       });
-      console.log('[V2 Attestation] Retry response:', response);
 
       if (response.requiresVerification) {
         turnstileToken = null;
         showTurnstileModal();
       }
     } catch (err) {
-      console.error('[V2 Attestation] Wallet signature failed:', err);
+      console.error('[V2 Attestation] Wallet signature rejected');
       return { error: 'Wallet signature rejected' };
     }
   }
@@ -2384,7 +2409,13 @@ function updateStreakPanel(stats: ServerStatsResponse): void {
  */
 async function renderNftPanel(stats: ServerStatsResponse): Promise<void> {
   if (!stats || !hasNftContract()) {
-    nftPanel.style.display = 'none';
+    // Still show the panel with an empty message if wallet is connected
+    if (gameState.isConnected) {
+      nftPanel.style.display = 'block';
+      setHtml(nftList, '<li class="nft-empty">No achievements yet</li>');
+    } else {
+      nftPanel.style.display = 'none';
+    }
     return;
   }
 
@@ -2407,12 +2438,10 @@ async function renderNftPanel(stats: ServerStatsResponse): Promise<void> {
     }
   }
 
-  if (allUnlocked.length === 0) {
-    nftPanel.style.display = 'none';
-    return;
-  }
+  // Populate module-level set so collection grid can show unlocked-but-not-minted items
+  unlockedTiers = new Set(allUnlocked.map(u => u.tier));
 
-  // Show the panel
+  // Always show the panel when wallet is connected (even if no achievements yet)
   nftPanel.style.display = 'block';
 
   // Check on-chain claim status for each
@@ -2531,12 +2560,15 @@ function renderCollectionGrid(): void {
 
   for (const slot of COLLECTION_SLOTS) {
     const isMinted = claimedOnChain.has(slot.tier);
+    const isUnlocked = unlockedTiers.has(slot.tier);
     const isEquipped = slot.cursor && slot.cursor === equippedCursor;
 
     const div = document.createElement('div');
-    div.className = 'collection-item' + (isMinted ? '' : ' locked') + (isEquipped ? ' equipped' : '');
 
     if (isMinted) {
+      // ---- MINTED: show full item with equip/lightbox handlers ----
+      div.className = 'collection-item' + (isEquipped ? ' equipped' : '');
+
       let iconHtml: string;
       const isGlobal = slot.tier >= 200 && slot.tier < 500;
 
@@ -2563,9 +2595,7 @@ function renderCollectionGrid(): void {
           showAchievementToast('Cursor Equipped!', `Now using: ${slot.name}`);
         });
       } else if (isGlobal) {
-        // Global 1/1 NFT - click to view larger
         div.style.cursor = 'pointer';
-        // Find the global click number from GLOBAL_ONE_OF_ONE_TIERS
         const globalInfo = GLOBAL_ONE_OF_ONE_TIERS.find(g => g.tier === slot.tier);
         const clickNumText = globalInfo ? `CLICK ${globalInfo.globalClick.toLocaleString()}` : '';
         div.addEventListener('click', () => {
@@ -2576,7 +2606,41 @@ function renderCollectionGrid(): void {
           );
         });
       }
+    } else if (isUnlocked) {
+      // ---- UNLOCKED BUT NOT MINTED: show preview + MINT button ----
+      div.className = 'collection-item unlocked';
+
+      let iconHtml: string;
+      const isGlobal = slot.tier >= 200 && slot.tier < 500;
+
+      if (slot.cursor) {
+        iconHtml = `<img src="cursors/${slot.cursor}.png" class="collection-item-img" alt="${slot.name}">`;
+      } else if (isGlobal) {
+        iconHtml = `<img src="one-of-ones/${slot.tier}.png" class="collection-item-img" alt="${slot.name}">`;
+      } else {
+        const info = getMilestoneInfo(slot.tier);
+        iconHtml = `<span class="collection-item-emoji">${info.emoji}</span>`;
+      }
+
+      div.innerHTML = `
+        ${iconHtml}
+        <span class="collection-item-name">${slot.name}</span>
+        <button class="collection-mint-btn">MINT</button>
+      `;
+
+      // Mint button opens the claim modal
+      const mintBtn = div.querySelector('.collection-mint-btn');
+      mintBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Find the milestone ID for this tier
+        const milestoneId = Object.entries(MILESTONE_ID_TO_TIER).find(
+          ([, t]) => t === slot.tier
+        )?.[0] || '';
+        showClaimModal(milestoneId, slot.tier);
+      });
     } else {
+      // ---- LOCKED: show mystery placeholder ----
+      div.className = 'collection-item locked';
       div.innerHTML = `
         <div class="collection-item-slot">?</div>
         <span class="collection-item-name">????</span>

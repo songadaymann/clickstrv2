@@ -16,7 +16,7 @@ const MAX_AGE_MS = 3 * 60 * 60 * 1000;
 export function saveClicksToStorage(state: PersistedState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    console.log(`[Storage] Saved ${state.validClicks} clicks for ${state.address}`);
+    console.log(`[Storage] Saved ${state.validClicks} clicks`);
   } catch (error) {
     console.error('[Storage] Error saving:', error);
   }

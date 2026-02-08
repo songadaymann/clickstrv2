@@ -26,7 +26,6 @@ function getMainnetProvider(): ethers.providers.JsonRpcProvider {
 
   // Use Alchemy mainnet RPC if available, fallback to public RPC
   const rpcUrl = import.meta.env.VITE_ETH_MAINNET_RPC_URL || 'https://eth.llamarpc.com';
-  console.log('[ENS] Mainnet RPC URL:', rpcUrl.includes('alchemy') ? 'Alchemy (configured)' : rpcUrl);
   mainnetProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
   return mainnetProvider;
 }
@@ -54,16 +53,14 @@ export async function lookupEns(address: string): Promise<string | null> {
   const lookupPromise = (async (): Promise<string | null> => {
     try {
       const provider = getMainnetProvider();
-      console.log('[ENS] Looking up address:', address);
       const name = await provider.lookupAddress(address);
-      console.log('[ENS] Resolved:', address, '->', name || '(no ENS)');
 
       // Cache the result (even if null)
       ensCache.set(addrLower, { name, timestamp: Date.now() });
 
       return name;
     } catch (error) {
-      console.warn(`[ENS] Lookup failed for ${address}:`, error);
+      console.warn('[ENS] Lookup failed:', error);
       // Cache the failure to avoid repeated failed lookups
       ensCache.set(addrLower, { name: null, timestamp: Date.now() });
       return null;

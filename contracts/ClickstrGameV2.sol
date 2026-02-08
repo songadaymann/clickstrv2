@@ -77,8 +77,8 @@ contract ClickstrGameV2 is Ownable, ReentrancyGuard {
     /// @notice Grace period after game end for claiming rewards
     uint256 public constant CLAIM_GRACE_PERIOD = 72 hours;
 
-    /// @notice Daily emission rate (2% of remaining pool)
-    uint256 public constant DAILY_EMISSION_RATE = 200; // 2%
+    /// @notice Flat per-epoch budget = seasonPool / TOTAL_EPOCHS
+    /// (replaces the old 2% decay model for predictable per-epoch distribution)
 
     // ============ Immutable Configuration ============
 
@@ -96,6 +96,9 @@ contract ClickstrGameV2 is Ownable, ReentrancyGuard {
 
     /// @notice Duration of each epoch in seconds
     uint256 public immutable EPOCH_DURATION;
+
+    /// @notice Original season pool (set at startGame, used for flat epoch budget)
+    uint256 public seasonPool;
 
     // ============ State Variables ============
 
@@ -265,7 +268,7 @@ contract ClickstrGameV2 is Ownable, ReentrancyGuard {
         if (_treasury == address(0)) revert ZeroAddress();
         if (_attestationSigner == address(0)) revert ZeroAddress();
         require(_totalEpochs > 0, "Epochs must be > 0");
-        require(_epochDuration >= 2 minutes, "Epoch too short"); // TODO: restore to 1 hours before mainnet
+        require(_epochDuration >= 1 hours, "Epoch too short");
         require(_seasonNumber > 0, "Season must be > 0");
 
         registry = IClickRegistry(_registry);
@@ -291,6 +294,7 @@ contract ClickstrGameV2 is Ownable, ReentrancyGuard {
         uint256 treasuryBalance = treasury.getBalance();
         require(treasuryBalance >= _seasonPool, "Insufficient treasury balance");
 
+        seasonPool = _seasonPool;
         poolRemaining = _seasonPool;
         gameStartTime = block.timestamp;
         gameEndTime = block.timestamp + (TOTAL_EPOCHS * EPOCH_DURATION);
@@ -677,9 +681,14 @@ contract ClickstrGameV2 is Ownable, ReentrancyGuard {
         uint256 epoch,
         uint256 clickCount
     ) internal returns (uint256) {
-        // Initialize epoch budget if not set
+        // Flat per-epoch budget, capped by fair share of remaining pool.
+        // min(seasonPool/TOTAL_EPOCHS, poolRemaining/remainingEpochs) ensures later
+        // epochs gracefully degrade if bonuses/winner rewards depleted the pool.
         if (epochEmissionBudget[epoch] == 0) {
-            epochEmissionBudget[epoch] = (poolRemaining * DAILY_EMISSION_RATE) / BASIS_POINTS;
+            uint256 flatBudget = seasonPool / TOTAL_EPOCHS;
+            uint256 remainingEpochs = TOTAL_EPOCHS - epoch + 1;
+            uint256 fairBudget = poolRemaining / remainingEpochs;
+            epochEmissionBudget[epoch] = flatBudget < fairBudget ? flatBudget : fairBudget;
         }
 
         uint256 budget = epochEmissionBudget[epoch];
@@ -688,10 +697,16 @@ contract ClickstrGameV2 is Ownable, ReentrancyGuard {
 
         if (remaining == 0) {
             // Soft overflow: 10% of normal rate from pool
-            return (poolRemaining * clickCount) / (1_000_000 * 10);
+            uint256 softReward = (poolRemaining * clickCount) / (1_000_000 * 10);
+            // Apply same per-claim safety cap as normal path
+            uint256 softMax = poolRemaining / 10;
+            if (softReward > softMax) {
+                softReward = softMax;
+            }
+            return softReward;
         }
 
-        // Normal calculation: proportional to clicks vs target (1M/day)
+        // Normal calculation: proportional to clicks vs target (1M/day scaled to epoch)
         uint256 targetClicks = (1_000_000 * EPOCH_DURATION) / 86400;
         uint256 reward = (budget * clickCount) / targetClicks;
 
@@ -719,7 +734,10 @@ contract ClickstrGameV2 is Ownable, ReentrancyGuard {
         // Burn unused emission
         uint256 budget = epochEmissionBudget[epoch];
         if (budget == 0) {
-            budget = (poolRemaining * DAILY_EMISSION_RATE) / BASIS_POINTS;
+            uint256 flatBudget = seasonPool / TOTAL_EPOCHS;
+            uint256 remainingEpochs = TOTAL_EPOCHS - epoch + 1;
+            uint256 fairBudget = poolRemaining / remainingEpochs;
+            budget = flatBudget < fairBudget ? flatBudget : fairBudget;
             epochEmissionBudget[epoch] = budget;
         }
 
