@@ -12,7 +12,7 @@ import './styles/main.css';
 import { gameState } from './state/index.ts';
 
 // Import config
-import { CONFIG, hasNftContract, getCurrentGame, getAllGames, CURRENT_NETWORK, type GameConfig } from './config/index.ts';
+import { CONFIG, hasNftContract, getCurrentGame, getAllGames, type GameConfig } from './config/index.ts';
 
 // V2 is now the primary mode (off-chain validation + on-chain settlement)
 const IS_V2 = true;

@@ -3,7 +3,7 @@
  */
 
 import { ethers } from 'ethers';
-import { CONFIG, hasNftContract, CURRENT_NETWORK } from '@/config/index.ts';
+import { CONFIG, hasNftContract } from '@/config/index.ts';
 import { CLICKSTR_ABI, NFT_CONTRACT_ABI, CLICKSTR_V2_ABI } from '@/types/index.ts';
 
 /** Whether we're using V2 contracts */
