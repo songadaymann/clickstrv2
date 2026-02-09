@@ -149,6 +149,12 @@
   margin: 0 10px;
   text-shadow: 0 0 6px rgba(255, 0, 0, 0.5);
   opacity: 0.8;
+  cursor: pointer;
+}
+
+.leaderboard-name:hover {
+  opacity: 1;
+  text-shadow: var(--glow-red-md);
 }
 
 .leaderboard-name.is-you {
@@ -777,6 +783,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.rankings-name:hover {
+  opacity: 1;
+  text-shadow: var(--glow-red-md);
 }
 
 .rankings-name.is-you {

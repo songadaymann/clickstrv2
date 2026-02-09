@@ -1977,6 +1977,19 @@ function renderLeaderboard(): void {
 
   setHtml(leaderboardListEl, html);
 
+  // Click-to-copy address on leaderboard names
+  leaderboardListEl.querySelectorAll('.leaderboard-name').forEach(nameEl => {
+    nameEl.addEventListener('click', (e) => {
+      const li = (e.target as HTMLElement).closest('.leaderboard-item') as HTMLElement | null;
+      const address = li?.dataset.address;
+      if (address) {
+        navigator.clipboard.writeText(address).then(() => {
+          showAchievementToast('Copied!', `${address.slice(0, 6)}...${address.slice(-4)} copied to clipboard`);
+        });
+      }
+    });
+  });
+
   // Kick off ENS resolution in background for addresses without cached ENS
   resolveLeaderboardEns();
 }
@@ -2476,15 +2489,18 @@ function renderRankingsList(data: MergedLeaderboardEntry[], isEarned = false): v
       const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : '';
 
       // Priority: server name > cached ENS > shortened address
+      // All user-supplied strings are escaped to prevent XSS
       const cachedEns = getCachedEns(entry.address);
-      const displayName =
+      const rawName =
         entry.name && entry.name !== 'Anonymous'
           ? entry.name
           : cachedEns || shortenAddress(entry.address);
+      const displayName = escapeHtml(rawName);
+      const safeAddress = escapeHtml(entry.address);
 
       const milestone = getHighestMilestone(entry.totalClicks);
       const iconHtml = milestone
-        ? `<img src="cursors/${milestone.cursor}.png" class="rankings-cursor-icon" alt="${milestone.name}">`
+        ? `<img src="cursors/${escapeHtml(milestone.cursor)}.png" class="rankings-cursor-icon" alt="${escapeHtml(milestone.name)}">`
         : `<span class="rankings-indicator">🧑</span>`;
 
       // Show earned amount for earned tab, click count otherwise
@@ -2493,7 +2509,7 @@ function renderRankingsList(data: MergedLeaderboardEntry[], isEarned = false): v
         : `<span class="rankings-clicks">${formatNumber(entry.totalClicks)}</span>`;
 
       return `
-        <li class="rankings-item ${isYou ? 'is-you' : ''}" data-address="${entry.address}">
+        <li class="rankings-item ${isYou ? 'is-you' : ''}" data-address="${safeAddress}">
           <span class="rankings-rank ${rankClass}">${entry.rank}</span>
           ${iconHtml}
           <span class="rankings-name ${isYou ? 'is-you' : ''}">${displayName}${isYou ? ' (you)' : ''}</span>
@@ -2504,6 +2520,19 @@ function renderRankingsList(data: MergedLeaderboardEntry[], isEarned = false): v
     .join('');
 
   setHtml(rankingsListEl, html);
+
+  // Click-to-copy address on rankings names
+  rankingsListEl.querySelectorAll('.rankings-name').forEach(nameEl => {
+    nameEl.addEventListener('click', (e) => {
+      const li = (e.target as HTMLElement).closest('.rankings-item') as HTMLElement | null;
+      const address = li?.dataset.address;
+      if (address) {
+        navigator.clipboard.writeText(address).then(() => {
+          showAchievementToast('Copied!', `${address.slice(0, 6)}...${address.slice(-4)} copied to clipboard`);
+        });
+      }
+    });
+  });
 
   // Kick off ENS resolution in background
   resolveRankingsEns(data);
