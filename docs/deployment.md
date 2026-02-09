@@ -80,9 +80,9 @@ VITE_SEPOLIA_RPC_URL=...
 VITE_WALLET_CONNECT_PROJECT_ID=...
 ```
 
-Note: V2 mode is currently hard-coded to `CURRENT_NETWORK === 'sepolia'` in
-`/Users/jonathanmann/SongADAO Dropbox/Jonathan Mann/projects/games/stupid-clicker/clickstrv2/src-ts/src/main.ts`.
-If you deploy V2 on mainnet, update that logic or it will keep running the V1 flow.
+**WARNING**: V2 mode is currently hard-coded to `CURRENT_NETWORK === 'sepolia'`
+in two files. Setting `VITE_NETWORK=mainnet` alone will NOT enable V2 on mainnet.
+See the **Sepolia to Mainnet Migration** section below for the full checklist.
 
 ## Deploy the V2 Infrastructure
 This is a one-time deployment for registry and treasury plus the first season.
@@ -227,3 +227,114 @@ If you set up the bonus tiers in the game contract, these are the default levels
 | 11 | 500K Club | 500,000 | 10% |
 
 Max possible bonus: 27% if all tiers are held.
+
+## Sepolia to Mainnet Migration
+
+When moving V2 from Sepolia to Mainnet, every item below must be addressed.
+Items marked **CRITICAL** will silently break V2 if missed.
+
+### 1. Code changes (CRITICAL)
+
+These are hard-coded checks that gate all V2 logic. If you only change the
+env var to `mainnet`, the app will fall back to V1 contract calls and break.
+
+| File | Line | Current | Change to |
+|------|------|---------|-----------|
+| `src-ts/src/main.ts` | 18 | `const IS_V2 = CURRENT_NETWORK === 'sepolia';` | `const IS_V2 = true;` (or a proper config flag) |
+| `src-ts/src/services/contracts.ts` | 10 | `const IS_V2 = CURRENT_NETWORK === 'sepolia';` | `const IS_V2 = true;` (must match main.ts) |
+
+A cleaner long-term fix: add a `VITE_V2_ENABLED=true` env var, or derive
+IS_V2 from the contract ABI / season config instead of the network name.
+
+### 2. API URL routing (CRITICAL)
+
+`src-ts/src/config/network.ts` line 48-50 routes the API based on network:
+```typescript
+const apiUrl = networkId === 'sepolia'
+  ? 'https://mann.cool/api/clickstr-v2'
+  : 'https://mann.cool/api/clickstr';
+```
+
+On mainnet this sends all requests to the V1 API endpoint. Change to:
+```typescript
+const apiUrl = 'https://mann.cool/api/clickstr-v2';
+```
+Or use a `VITE_API_URL` env var.
+
+### 3. Contract addresses
+
+`src-ts/src/config/network.ts` lines 24-32 — the `mainnet` block currently
+has V1 addresses. Replace with the new V2 deployment addresses:
+```
+contractAddress    -> new ClickstrGameV2 on mainnet
+tokenAddress       -> $CLICK mainnet token (probably unchanged)
+nftContractAddress -> new ClickstrNFTV2 on mainnet
+```
+Also add V2 registry and treasury addresses as comments (like the Sepolia
+block does on lines 20-22).
+
+### 4. Subgraph URL
+
+`src-ts/src/config/network.ts` lines 58-60 — the mainnet subgraph URL
+currently points to the V1 subgraph. Deploy a V2 subgraph on mainnet and
+update the URL, or remove if V2 doesn't use a subgraph.
+
+### 5. Games config
+
+`src-ts/src/config/games.ts` — add a new entry for the mainnet V2 season
+with `isActive: true` and the correct contract address and subgraph URL.
+Set previous seasons to `isActive: false`.
+
+### 6. Vercel env vars — clickstr.fun (frontend)
+
+| Variable | Sepolia value | Mainnet value |
+|----------|--------------|---------------|
+| `VITE_NETWORK` | `sepolia` | `mainnet` |
+| `VITE_ETH_MAINNET_RPC_URL` | (can be empty) | Alchemy/Infura mainnet URL |
+| `VITE_SEPOLIA_RPC_URL` | Alchemy Sepolia URL | (can be empty) |
+| `VITE_WALLET_CONNECT_PROJECT_ID` | same | same |
+
+### 7. Vercel env vars — mann.cool (server)
+
+| Variable | Sepolia value | Mainnet value |
+|----------|--------------|---------------|
+| `CHAIN_ID` | `11155111` | `1` |
+| `RPC_URL` | Sepolia RPC | Mainnet RPC |
+| `CLICKSTR_GAME_V2_ADDRESS` | Sepolia game address | New mainnet game address |
+| `CLICKSTR_REGISTRY_ADDRESS` | Sepolia registry | New mainnet registry |
+| `NFT_CONTRACT_ADDRESS` | Sepolia NFT | New mainnet NFT |
+| `ATTESTATION_SIGNER_PRIVATE_KEY` | same or rotate | same or rotate |
+| `NFT_SIGNER_PRIVATE_KEY` | same or rotate | same or rotate |
+
+### 8. Hardhat deployment
+
+Change `--network sepolia` to `--network mainnet` in all deploy commands:
+```
+npx hardhat run scripts/deploy-v2.js --network mainnet
+npx hardhat run scripts/deploy-v2-season.js --network mainnet
+```
+
+Ensure `.env` has `MAINNET_PRIVATE_KEY` and `ETH_MAINNET_RPC_URL` set.
+
+### 9. AppKit wallet config
+
+`src-ts/src/config/appkit.ts` lines 12-13 — auto-selects based on
+`CURRENT_NETWORK`. No change needed; setting `VITE_NETWORK=mainnet` is
+enough for this file.
+
+### 10. Turnstile
+
+The Cloudflare Turnstile site key is currently shared between Sepolia and
+mainnet (`network.ts` lines 19, 31). No change needed unless you want
+separate widgets per environment.
+
+### Migration order
+
+1. Deploy contracts on mainnet (`--network mainnet`)
+2. Verify contracts on Etherscan
+3. Update code (steps 1-5 above) and push
+4. Update Vercel env vars for mann.cool (step 7)
+5. Update Vercel env vars for clickstr.fun (step 6)
+6. Redeploy both Vercel projects
+7. Test: connect wallet, click, submit, claim, mint NFT
+8. Monitor logs for any V1 fallback behavior
