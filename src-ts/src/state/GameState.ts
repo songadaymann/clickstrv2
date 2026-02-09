@@ -45,6 +45,8 @@ export class GameState {
   private _currentEpoch = 0;
   private _totalEpochs = 0;
   private _isGameActive = false;
+  private _gameStartTime = 0;
+  private _gameEndTime = 0;
 
   // Click state
   private _validClicks = 0;
@@ -172,9 +174,22 @@ export class GameState {
     return this._isGameActive;
   }
 
+  get gameStartTime(): number {
+    return this._gameStartTime;
+  }
+
+  get gameEndTime(): number {
+    return this._gameEndTime;
+  }
+
   setGameActive(active: boolean): void {
     this._isGameActive = active;
     this.emit('statsChanged');
+  }
+
+  setGameTiming(startTime: number, endTime: number): void {
+    this._gameStartTime = startTime;
+    this._gameEndTime = endTime;
   }
 
   // ============ Click State ============

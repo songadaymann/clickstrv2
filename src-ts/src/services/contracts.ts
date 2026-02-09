@@ -360,6 +360,7 @@ export async function refreshGameData(): Promise<boolean> {
   const effectiveEpoch = IS_V2 ? computeEffectiveEpoch(gameStats) : gameStats.currentEpoch;
   gameState.setEpochInfo(effectiveEpoch, gameStats.totalEpochs);
   gameState.setDifficulty(difficulty);
+  gameState.setGameTiming(gameStats.gameStartTime, gameStats.gameEndTime);
   gameState.setPoolRemaining(
     parseFloat(ethers.utils.formatEther(gameStats.poolRemaining.toString()))
   );

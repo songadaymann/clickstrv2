@@ -157,6 +157,7 @@ let activeHumansEl: HTMLElement;
 let gameStatusEl: HTMLElement;
 let difficultyDisplayEl: HTMLElement;
 let rewardPerClickEl: HTMLElement;
+let epochCountdownEl: HTMLElement;
 
 // ============ Local State ============
 let isPressed = false;
@@ -307,6 +308,7 @@ function cacheElements(): void {
   gameStatusEl = getElement('game-status');
   difficultyDisplayEl = getElement('difficulty-display');
   rewardPerClickEl = getElement('reward-per-click');
+  epochCountdownEl = getElement('epoch-countdown');
 
   // Leaderboard toggle elements
   leaderboardToggleEpoch = getElement<HTMLButtonElement>('leaderboard-toggle-epoch');
@@ -1106,11 +1108,15 @@ async function onConnected(): Promise<void> {
 
   // Start heartbeat for active user tracking
   startHeartbeat();
+
+  // Start epoch countdown timer
+  startEpochCountdown();
 }
 
 async function handleDisconnect(): Promise<void> {
   terminateMining();
   stopHeartbeat();
+  stopEpochCountdown();
   await disconnect();
   updateConnectButton();
   isMiningClick = false;
@@ -1118,6 +1124,7 @@ async function handleDisconnect(): Promise<void> {
   buttonImg.src = 'button-up.jpg';
   // Hide streak stat on disconnect
   streakStat.classList.remove('visible');
+  setText(epochCountdownEl, '--:--:--');
 }
 
 // ============ Submit ============
@@ -1920,6 +1927,86 @@ function startPeriodicUpdates(): void {
       await refreshUserStats();
     }
   }, 30000);
+}
+
+// ============ Epoch Countdown ============
+
+let countdownInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Compute the end time (unix seconds) of the current epoch
+ * based on gameStartTime, gameEndTime, totalEpochs, and currentEpoch.
+ * epochDuration = (gameEndTime - gameStartTime) / totalEpochs
+ * epochEndTime  = gameStartTime + currentEpoch * epochDuration
+ */
+function getEpochEndTime(): number {
+  const { gameStartTime, gameEndTime, totalEpochs, currentEpoch } = gameState;
+  if (!gameStartTime || !gameEndTime || !totalEpochs || !currentEpoch) return 0;
+
+  const epochDuration = (gameEndTime - gameStartTime) / totalEpochs;
+  return gameStartTime + currentEpoch * epochDuration;
+}
+
+/**
+ * Format seconds remaining as HH:MM:SS or MM:SS
+ */
+function formatCountdown(seconds: number): string {
+  if (seconds <= 0) return '00:00';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+
+  const mm = String(m).padStart(2, '0');
+  const ss = String(s).padStart(2, '0');
+
+  if (h > 0) {
+    return `${h}:${mm}:${ss}`;
+  }
+  return `${mm}:${ss}`;
+}
+
+/**
+ * Update the epoch countdown display
+ */
+function updateEpochCountdown(): void {
+  if (!gameState.isGameActive) {
+    setText(epochCountdownEl, '--:--');
+    return;
+  }
+
+  const epochEnd = getEpochEndTime();
+  if (!epochEnd) {
+    setText(epochCountdownEl, '--:--');
+    return;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const remaining = epochEnd - now;
+
+  if (remaining <= 0) {
+    setText(epochCountdownEl, '00:00');
+  } else {
+    setText(epochCountdownEl, formatCountdown(remaining));
+  }
+}
+
+/**
+ * Start the epoch countdown timer (updates every second)
+ */
+function startEpochCountdown(): void {
+  if (countdownInterval) return;
+  updateEpochCountdown();
+  countdownInterval = setInterval(updateEpochCountdown, 1000);
+}
+
+/**
+ * Stop the epoch countdown timer
+ */
+function stopEpochCountdown(): void {
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
 }
 
 // ============ Heartbeat & Active Users ============

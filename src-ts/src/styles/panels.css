@@ -1040,6 +1040,22 @@
   color: var(--color-cyan);
 }
 
+/* Epoch countdown + Clicking Now on same row */
+.global-stat-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.global-stat-inline.align-right {
+  align-items: flex-end;
+}
+
+.countdown-value {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Difficulty and reward per click - side by side */
 .global-stat-mini {
   display: flex;
