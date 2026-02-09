@@ -1068,3 +1068,45 @@
 .reward-value {
   font-size: 18px;
 }
+
+/* Finalize epochs banner */
+.finalize-banner {
+  text-align: center;
+  padding-top: 2px;
+}
+
+.finalize-btn {
+  font-family: var(--font-display);
+  font-size: 13px;
+  padding: 6px 14px;
+  border: 1px solid var(--color-gold, #f0c040);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-gold, #f0c040);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.finalize-btn:hover {
+  background: var(--color-gold, #f0c040);
+  color: #000;
+}
+
+.finalize-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.finalize-btn.finalizing {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.finalize-help {
+  display: block;
+  font-size: 10px;
+  color: var(--color-gray-400, #888);
+  margin-top: 3px;
+}

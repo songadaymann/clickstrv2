@@ -148,6 +148,14 @@
               <span class="global-stat-value reward-value" id="reward-per-click">--</span>
             </div>
           </div>
+          <!-- Finalize epochs banner (hidden by default) -->
+          <div id="finalize-banner" class="finalize-banner" style="display: none;">
+            <div class="global-stat-divider"></div>
+            <button id="finalize-btn" class="finalize-btn">
+              Finalize Epochs (<span id="finalize-count">0</span>)
+            </button>
+            <span class="finalize-help">Earn a small reward for settling on-chain</span>
+          </div>
         </div>
       </div>
 
@@ -265,6 +273,7 @@
   <!-- NFT Claim Modal -->
   <div id="claim-modal" class="modal">
     <div class="claim-modal-content">
+      <button class="claim-close-btn" id="claim-close-btn">X</button>
       <div class="claim-modal-title">Achievement Unlocked!</div>
       <div class="claim-modal-subtitle">You've earned an NFT</div>
       <div class="claim-nft-preview" id="claim-nft-preview"></div>

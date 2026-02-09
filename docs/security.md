@@ -95,6 +95,32 @@ Review of the TypeScript frontend for XSS, information leakage, and claim flow h
 
 **Fix:** Clamped `remainingEpochs` to `>= 1n` so the budget calculation always produces a meaningful value.
 
+## Bot Penetration Test (Feb 8, 2026)
+
+Built two bots to test whether the Turnstile + PoW defense can be defeated by an automated attacker. Code in `bot/`.
+
+### Level 1: Token Replay (`bot/click-bot.mjs`)
+
+Node.js script that mines PoW nonces and submits them to the API with a manually-copied Turnstile token.
+
+- **PoW**: Trivially replicated. 50 valid nonces in ~0.5s at ~90K H/s in pure JS. No GPU needed. PoW alone is not a meaningful bot deterrent.
+- **Token replay**: **BLOCKED**. A real Turnstile token copied from the browser was rejected by the server (`"Verification failed"`). Tokens are bound to the originating session/IP and cannot be replayed from a different process.
+
+### Level 2: Headless Browser (`bot/headless-bot.mjs`)
+
+Puppeteer + stealth plugin loads the live site, dismisses the welcome modal, injects a Turnstile widget programmatically, and attempts to auto-solve.
+
+- **Stealth evasion**: Used `puppeteer-extra-plugin-stealth`, `--disable-blink-features=AutomationControlled`, `ignoreDefaultArgs: ['--enable-automation']`, custom user agent, and custom window size.
+- **Result**: **BLOCKED**. Turnstile's `render()` call created the hidden input element but the challenge iframe never loaded. Cloudflare's JS-level fingerprinting detected the automated browser. Tested both headless and visible modes — both failed identically.
+
+### Conclusions
+
+- PoW is not a bot barrier; it exists for rate-limiting and is trivially solvable outside the browser.
+- **Turnstile is the real defense** and it held against both attack vectors.
+- Tokens are non-transferable (can't be replayed from another process).
+- Headless browsers (even with stealth plugins) are detected at the challenge level.
+- **Remaining theoretical risk**: paid Turnstile solver services (CapSolver, 2Captcha) that use human farms or heavily patched browsers. Not tested.
+
 ## Operational Checklist
 - Do not store the attestation private key in frontend or build-time envs.
 - Disable secrets on preview deployments.

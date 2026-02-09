@@ -35,6 +35,9 @@ export const CLICKSTR_V2_ABI = [
   'function poolRemaining() external view returns (uint256)',
   'function TOTAL_EPOCHS() external view returns (uint256)',
   'function EPOCH_DURATION() external view returns (uint256)',
+  'function finalizeEpoch(uint256 epoch) external',
+  'function epochFinalized(uint256 epoch) external view returns (bool)',
+  'function gameStartTime() external view returns (uint256)',
 ] as const;
 
 /** Type for contract ABI */

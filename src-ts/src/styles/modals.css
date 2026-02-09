@@ -170,9 +170,11 @@
 /* Must sit above collection modal so minting from the grid works on mobile */
 #claim-modal {
   z-index: var(--z-modal-top);
+  background: rgba(0, 0, 0, 0.4);
 }
 
 .claim-modal-content {
+  position: relative;
   background: var(--color-red-dark);
   border: 3px solid var(--color-red-700);
   border-radius: var(--radius-md);
@@ -307,6 +309,25 @@
   color: var(--color-red-900);
   font-size: 8px;
   margin-top: var(--spacing-md);
+}
+
+.claim-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--color-red-700);
+  font-family: var(--font-label);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.claim-close-btn:hover {
+  color: var(--color-red-400);
 }
 
 /* ============ HELP MODAL ============ */

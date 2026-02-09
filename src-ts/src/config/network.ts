@@ -25,10 +25,13 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     chainId: 1,
     chainName: 'Ethereum',
     rpcUrl: import.meta.env.VITE_ETH_MAINNET_RPC_URL || '',
-    contractAddress: '0xf724ede44Bbb2Ccf46cec530c21B14885D441e02', // Clickstr Season 1 (Feb 4-7, 2026)
+    contractAddress: '0xACBA29C4a55D69c4631CAf68376AEe78f7A59f6F', // ClickstrGameV2 Season 2 (6 epochs x 4h = 24h)
     tokenAddress: '0x7ddbd0c4a0383a0f9611b715809f92c90e1d991d', // $CLICK token via TokenWorks
-    nftContractAddress: '0x37c4C8817a6F87e6a0984b5e8fd73c9F07f8f849', // ClickstrNFT
+    nftContractAddress: '0x43693922EE81D4930fDFCB03DEEA6d75e41c05b0', // ClickstrNFTV2 (mainnet)
     turnstileSiteKey: '0x4AAAAAACV0UOMmCeG_g2Jr',
+    // V2 infrastructure (mainnet):
+    // Registry: 0xDA47fbc8DcBeef8069859416e0fdC2Ac62bDd576
+    // Treasury: 0x25e34963231de4451846cBb1A4ACEfa56c81f4e4
   },
 } as const;
 
@@ -45,9 +48,7 @@ export const CURRENT_NETWORK: NetworkId =
 /** Build the full application configuration */
 export function buildConfig(networkId: NetworkId = CURRENT_NETWORK): AppConfig {
   const network = NETWORKS[networkId];
-  const apiUrl = networkId === 'sepolia'
-    ? 'https://mann.cool/api/clickstr-v2'
-    : 'https://mann.cool/api/clickstr';
+  const apiUrl = 'https://mann.cool/api/clickstr-v2';
 
   return {
     ...network,

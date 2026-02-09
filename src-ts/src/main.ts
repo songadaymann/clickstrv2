@@ -14,8 +14,8 @@ import { gameState } from './state/index.ts';
 // Import config
 import { CONFIG, hasNftContract, getCurrentGame, getAllGames, CURRENT_NETWORK, type GameConfig } from './config/index.ts';
 
-// Check if we're using V2 (Sepolia)
-const IS_V2 = CURRENT_NETWORK === 'sepolia';
+// V2 is now the primary mode (off-chain validation + on-chain settlement)
+const IS_V2 = true;
 
 // Import services
 import {
@@ -50,6 +50,8 @@ import {
   submitClicksV2,
   fetchV2Stats,
   preloadSha3,
+  finalizeElapsedEpochs,
+  getUnfinalizedEpochCount,
 } from './services/index.ts';
 
 // Import effects
@@ -200,6 +202,11 @@ let rankingsListEl: HTMLElement;
 let rankingsMatrixHeaderEl: HTMLElement;
 let rankingsTab = 'epoch'; // V2: 'epoch'|'alltime'|'earned', V1: 'global' or game id
 
+// Finalize epochs elements
+let finalizeBanner: HTMLElement;
+let finalizeBtn: HTMLButtonElement;
+let finalizeCountEl: HTMLElement;
+
 // Lightbox elements
 let lightboxImage: HTMLImageElement;
 let lightboxName: HTMLElement;
@@ -319,6 +326,11 @@ function cacheElements(): void {
   rankingsTabsEl = getElement('rankings-tabs');
   rankingsListEl = getElement('rankings-list');
   rankingsMatrixHeaderEl = getElement('rankings-matrix-header');
+
+  // Finalize epochs elements
+  finalizeBanner = getElement('finalize-banner');
+  finalizeBtn = getElement<HTMLButtonElement>('finalize-btn');
+  finalizeCountEl = getElement('finalize-count');
 
   // Lightbox elements
   imageLightbox = getElement('image-lightbox');
@@ -640,6 +652,7 @@ function setupCollectionModalListeners(): void {
 function setupClaimModalListeners(): void {
   claimNftBtn?.addEventListener('click', handleClaimNft);
   claimLaterBtn?.addEventListener('click', () => hideModal(claimModal));
+  document.getElementById('claim-close-btn')?.addEventListener('click', () => hideModal(claimModal));
   claimModal?.addEventListener('click', (e) => {
     if (e.target === claimModal) hideModal(claimModal);
   });
@@ -1111,6 +1124,63 @@ async function onConnected(): Promise<void> {
 
   // Start epoch countdown timer
   startEpochCountdown();
+
+  // Check for unfinalized epochs (V2 only, fire-and-forget)
+  if (IS_V2) {
+    checkAndShowFinalizeBanner();
+  }
+}
+
+// ============ Finalize Epochs ============
+
+async function checkAndShowFinalizeBanner(): Promise<void> {
+  try {
+    const count = await getUnfinalizedEpochCount();
+    if (count > 0) {
+      setText(finalizeCountEl, count.toString());
+      finalizeBanner.style.display = '';
+      finalizeBtn.addEventListener('click', handleFinalizeEpochs);
+    } else {
+      finalizeBanner.style.display = 'none';
+    }
+  } catch (err) {
+    console.error('[Finalize] Error checking unfinalized epochs:', err);
+  }
+}
+
+async function handleFinalizeEpochs(): Promise<void> {
+  finalizeBtn.disabled = true;
+  addClass(finalizeBtn, 'finalizing');
+  const originalText = finalizeBtn.innerHTML;
+  finalizeBtn.textContent = 'Finalizing...';
+
+  try {
+    const finalized = await finalizeElapsedEpochs();
+    if (finalized.length > 0) {
+      finalizeBtn.textContent = `Finalized ${finalized.length} epoch${finalized.length > 1 ? 's' : ''}!`;
+      // Re-check if there are more
+      setTimeout(async () => {
+        await checkAndShowFinalizeBanner();
+      }, 2000);
+    } else {
+      finalizeBtn.textContent = 'Nothing to finalize';
+      setTimeout(() => {
+        finalizeBanner.style.display = 'none';
+      }, 2000);
+    }
+  } catch (err) {
+    console.error('[Finalize] Error:', err);
+    finalizeBtn.textContent = 'Failed — try again';
+    setTimeout(() => {
+      finalizeBtn.innerHTML = originalText;
+      finalizeBtn.disabled = false;
+      removeClass(finalizeBtn, 'finalizing');
+    }, 3000);
+    return;
+  }
+
+  finalizeBtn.disabled = false;
+  removeClass(finalizeBtn, 'finalizing');
 }
 
 async function handleDisconnect(): Promise<void> {
@@ -1387,6 +1457,45 @@ async function handleV2Claim(e: Event): Promise<void> {
       gameState.setDifficulty(BigInt(submitResult.difficultyTarget));
     }
 
+    // Update local state from submit response
+    if (submitResult.lifetimeClicks !== undefined) {
+      gameState.setAllTimeClicks(submitResult.lifetimeClicks);
+    }
+
+    // Handle achievements from submit response (NFT milestones work between games)
+    if (submitResult.newMilestones && submitResult.newMilestones.length > 0) {
+      handleAchievements({ newMilestones: submitResult.newMilestones });
+    }
+    if (submitResult.newAchievements && submitResult.newAchievements.length > 0) {
+      handleAchievements({
+        newAchievements: submitResult.newAchievements.map(a => ({
+          ...a,
+          name: a.name,
+          type: a.type as 'hidden' | 'global' | 'streak' | 'epoch',
+        })),
+      });
+    }
+
+    // Between games: submit to server only, no on-chain claim
+    if (!gameState.isGameActive) {
+      console.log('[V2 Claim] Game inactive — clicks submitted, skipping on-chain claim');
+      gameState.clearSubmittedClicks(nonces.length);
+      updateDisplays();
+
+      setText(claimBtn, 'Submitted!');
+      setTimeout(() => updateSubmitButton(), 1500);
+      claimBtn.disabled = false;
+      removeClass(claimBtn, 'claiming');
+
+      // Refresh NFT panel (milestones may have been unlocked)
+      const serverStatsRefresh = await fetchServerStats(gameState.userAddress!);
+      if (serverStatsRefresh) {
+        serverStats = serverStatsRefresh;
+        await renderNftPanel(serverStatsRefresh);
+      }
+      return;
+    }
+
     // Get current epoch from response or state
     const currentEpoch = submitResult.epoch ?? gameState.currentEpoch;
 
@@ -1443,16 +1552,6 @@ async function handleV2Claim(e: Event): Promise<void> {
 
       // Clear submitted clicks
       gameState.clearSubmittedClicks(nonces.length);
-
-      // Update local state
-      if (submitResult.lifetimeClicks !== undefined) {
-        gameState.setAllTimeClicks(submitResult.lifetimeClicks);
-      }
-
-      // Handle achievements
-      if (submitResult.newMilestones && submitResult.newMilestones.length > 0) {
-        handleAchievements({ newMilestones: submitResult.newMilestones });
-      }
 
       // Update UI
       updateDisplays();
@@ -1759,10 +1858,11 @@ function updateSubmitButton(): void {
   const canSubmit = hasEnoughClicks && gameState.isConnected;
 
   if (IS_V2) {
-    // V2: Use green Claim button
+    // V2: Use green Claim button (or "Submit" between games)
     removeClass(submitContainer, 'visible'); // Hide V1 submit button
     claimBtn.disabled = !canSubmit;
-    setText(claimBtn, `Claim (${gameState.validClicks})`);
+    const label = gameState.isGameActive ? 'Claim' : 'Submit';
+    setText(claimBtn, `${label} (${gameState.validClicks})`);
 
     if (hasEnoughClicks) {
       addClass(claimContainer, 'visible');

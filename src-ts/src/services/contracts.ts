@@ -6,8 +6,8 @@ import { ethers } from 'ethers';
 import { CONFIG, hasNftContract, CURRENT_NETWORK } from '@/config/index.ts';
 import { CLICKSTR_ABI, NFT_CONTRACT_ABI, CLICKSTR_V2_ABI } from '@/types/index.ts';
 
-/** Whether we're using V2 contracts (Sepolia test) */
-const IS_V2 = CURRENT_NETWORK === 'sepolia';
+/** Whether we're using V2 contracts */
+const IS_V2 = true;
 import type { GameStats, EpochInfo, UserLifetimeStats } from '@/types/index.ts';
 import { getSigner } from './wallet.ts';
 import { gameState } from '@/state/index.ts';
@@ -457,6 +457,101 @@ export async function checkV2Claimed(
   } catch (error) {
     console.error('[Contracts] Error checking V2 claimed status:', error);
     return false;
+  }
+}
+
+/**
+ * Check which epochs need finalization and finalize them.
+ * Anyone can call finalizeEpoch() on the contract for elapsed epochs.
+ * The caller receives a small finalizer reward (0.1% of epoch distribution).
+ * @returns Array of finalized epoch numbers, or empty if none needed
+ */
+export async function finalizeElapsedEpochs(): Promise<number[]> {
+  const signer = getSigner();
+  if (!signer || !IS_V2) return [];
+
+  try {
+    const contract = new ethers.Contract(CONFIG.contractAddress, CLICKSTR_V2_ABI, signer);
+
+    // Read game timing
+    const [startTime, totalEpochs, epochDuration] = await Promise.all([
+      contract.gameStartTime(),
+      contract.TOTAL_EPOCHS(),
+      contract.EPOCH_DURATION(),
+    ]);
+
+    const gameStartTimeSec = Number(startTime.toString());
+    const totalEpochsNum = Number(totalEpochs.toString());
+    const epochDurationSec = Number(epochDuration.toString());
+    const now = Math.floor(Date.now() / 1000);
+
+    // Find epochs that have elapsed but aren't finalized
+    const unfinalized: number[] = [];
+    for (let epoch = 1; epoch <= totalEpochsNum; epoch++) {
+      const epochEndTime = gameStartTimeSec + epoch * epochDurationSec;
+      if (now < epochEndTime) break; // This epoch hasn't ended yet
+      const finalized = await contract.epochFinalized(epoch);
+      if (!finalized) {
+        unfinalized.push(epoch);
+      }
+    }
+
+    if (unfinalized.length === 0) return [];
+
+    // Finalize each one (can't batch — contract function takes a single epoch)
+    const finalized: number[] = [];
+    for (const epoch of unfinalized) {
+      try {
+        const tx = await contract.finalizeEpoch(epoch);
+        await tx.wait();
+        finalized.push(epoch);
+      } catch (err) {
+        console.error(`[Contracts] Failed to finalize epoch ${epoch}:`, err);
+        break; // Stop on first failure
+      }
+    }
+
+    return finalized;
+  } catch (error) {
+    console.error('[Contracts] Error in finalizeElapsedEpochs:', error);
+    return [];
+  }
+}
+
+/**
+ * Check how many epochs need finalization
+ * @returns Number of unfinalized elapsed epochs
+ */
+export async function getUnfinalizedEpochCount(): Promise<number> {
+  const signer = getSigner();
+  if (!signer || !IS_V2) return 0;
+
+  try {
+    const contract = new ethers.Contract(CONFIG.contractAddress, CLICKSTR_V2_ABI, signer);
+
+    const [startTime, totalEpochs, epochDuration] = await Promise.all([
+      contract.gameStartTime(),
+      contract.TOTAL_EPOCHS(),
+      contract.EPOCH_DURATION(),
+    ]);
+
+    const gameStartTimeSec = Number(startTime.toString());
+    const totalEpochsNum = Number(totalEpochs.toString());
+    const epochDurationSec = Number(epochDuration.toString());
+    const now = Math.floor(Date.now() / 1000);
+
+    let count = 0;
+    for (let epoch = 1; epoch <= totalEpochsNum; epoch++) {
+      const epochEndTime = gameStartTimeSec + epoch * epochDurationSec;
+      if (now < epochEndTime) break;
+      const finalized = await contract.epochFinalized(epoch);
+      if (!finalized) count++;
+    }
+
+    return count;
+  } catch (error) {
+    console.error('[Contracts] Error checking unfinalized epochs:', error);
+    return 0;
   }
 }
 

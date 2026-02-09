@@ -1,0 +1,34 @@
+{
+  "version": "v2-infra",
+  "network": "mainnet",
+  "chainId": 1,
+  "contracts": {
+    "clickToken": "0x7ddbd0c4a0383a0f9611b715809f92c90e1d991d",
+    "clickRegistry": "0xDA47fbc8DcBeef8069859416e0fdC2Ac62bDd576",
+    "clickstrTreasury": "0x25e34963231de4451846cBb1A4ACEfa56c81f4e4",
+    "clickstrNFTV2": "0x43693922EE81D4930fDFCB03DEEA6d75e41c05b0"
+  },
+  "signers": {
+    "nft": "0xf55E4fac663ad8db80284620F97D95391ab002EF"
+  },
+  "nftBaseURI": "ipfs://QmP7joVgJgoW3u6TFCpmxBBWLdrZSvpiioENPHRRbD3t9S/",
+  "deployer": "0x73468BD5fDD81b6e0c583bB5bb38534684c8DFe0",
+  "deployedAt": "2026-02-09T00:00:00.000Z",
+  "transactions": {
+    "registry": {
+      "hash": "0xa87601709a0e9d910d53e969cc6c79011cba0622563e9c3ff867f3044931b246",
+      "block": 24421121,
+      "gasUsed": 1109551
+    },
+    "treasury": {
+      "hash": "0xee95ced44c4cbbd40130be0094214525af8b89f6c421d644070b65ee5572cba2",
+      "block": 24421134,
+      "gasUsed": 982089
+    },
+    "nft": {
+      "hash": "0xeeaa00ca924bf4d305db284fabad06b94e8aa99577f524f25fe54f9f7cd7dd10",
+      "block": 24421140,
+      "gasUsed": 3061220
+    }
+  }
+}

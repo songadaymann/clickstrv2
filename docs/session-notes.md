@@ -1,6 +1,6 @@
 # Clickstr V2 Session Notes (Consolidated)
 
-Last updated: 2026-02-08
+Last updated: 2026-02-09
 
 This is a trimmed, V2-only summary of progress. V1 content intentionally omitted.
 
@@ -66,12 +66,94 @@ This is a trimmed, V2-only summary of progress. V1 content intentionally omitted
 
 **Requires new contract deploy to take effect.** Current running game still uses old logic.
 
+## Mobile Fixes, Epoch Countdown, Between-Games Flow & Mainnet Prep (Feb 9, 2026)
+
+**Safari mining fix:**
+Blob workers can't use `importScripts()` in Safari (opaque origin blocks cross-origin fetches). Added `preloadSha3()` which fetches the sha3 library in the main thread at startup and inlines it into the worker blob. Falls back to `importScripts` on Chrome/Firefox if preload hasn't completed. Clicks now work in Safari.
+
+**Mobile wallet connection:**
+MetaMask deep-linking from regular mobile browsers (Safari/Chrome) wasn't working because `clickstr.fun` wasn't added to the Reown Cloud project's allowed domains. Fixed in the dashboard (not a code change).
+
+**Epoch countdown timer:**
+Added a live countdown to the global stats panel showing time remaining in the current epoch. Rearranged the panel layout: epoch countdown + clicking now on the second row, pool moved to the third row. Countdown ticks every second, computed from `gameStartTime + currentEpoch * epochDuration`. Added `gameStartTime`/`gameEndTime` to `GameState`.
+
+**Between-games click flow (V2):**
+The V2 claim button was always running the full 3-step flow (submit to server, get attestation signature, call contract). Between games steps 2-3 would fail since there's no active game contract. Fixed `handleV2Claim()` to detect `!isGameActive` after the server submit succeeds and return early — clicks are recorded, milestones/NFTs still trigger, but no on-chain token claim is attempted. Button label switches from "Claim" to "Submit" when game is inactive.
+
+**Mainnet migration checklist:**
+Added a comprehensive "Sepolia to Mainnet Migration" section to `docs/deployment.md` covering all 10 areas that need updating: the hard-coded `IS_V2` checks, API URL routing, contract addresses, subgraph URLs, games config, Vercel env vars (frontend + server), Hardhat flags, AppKit config, and Turnstile.
+
+## Between-Games Click Fix, Finalize Epochs UI & Modal Polish (Feb 9, 2026)
+
+**Between-games clicks were failing ("No valid nonces")** — two bugs found and fixed:
+
+1. **Server `gameEnded` not derived from time** — The on-chain `gameEnded` flag only flips when someone calls `endGame()` after the 72h grace period. Between the last epoch ending and that call, the server's `getGameState()` returned `gameEnded: false`, so it thought the game was still active. It validated nonces against epoch 6 and adjusted difficulty, while the frontend correctly mined with epoch 0 and `MAX_DIFFICULTY_TARGET`. Fixed by computing `effectiveGameEnded` from `gameStartTime + totalEpochs * epochDuration` in `getGameState()`. Deployed to `mann.cool`.
+
+2. **Frontend `MAX_DIFFICULTY_TARGET` mismatch** — The frontend used `2^255 - 1` (~50% hash pass rate) while the server used `(2^256 - 1) / 1000` (~0.1% pass rate). Even with matching epochs, most frontend-mined nonces would fail server verification. Fixed in `mining.ts` to use the same `MAX_UINT256 / 1000n` formula. Only affects between-games mining (active games use server-synced difficulty).
+
+**Finalize Epochs UI:**
+The contract's `finalizeEpoch()` must be called for each elapsed epoch to settle on-chain accounting (winner bonus, unclaimed burns, finalizer reward). Previously there was no UI for this. Added:
+- `finalizeEpoch` and `epochFinalized` to the V2 contract ABI (`contracts.ts`)
+- `finalizeElapsedEpochs()` and `getUnfinalizedEpochCount()` service functions (`contracts.ts`)
+- A gold "Finalize Epochs (N)" banner in the game status panel that appears when unfinalized epochs exist. Clicking it calls `finalizeEpoch()` for each one sequentially. Caller earns a 0.1% finalizer reward.
+
+**NFT claim modal polish:**
+- Background changed from near-black overlay (`rgba(0,0,0,0.95)`) to semi-transparent (`rgba(0,0,0,0.4)`) so the game stays visible.
+- Added an X close button in the top-right corner.
+
+## Leaderboard Redesign & Mint Modal Fix (Feb 9, 2026)
+
+Removed the bot-vs-human leaderboard concept (V2 is human-only). Replaced the two-tab "Humans / On-Chain" toggle with three tabs: **Epoch**, **Clicks** (all-time), and **Earned** (all-time tokens).
+
+**Server (`mann-dot-cool/api/clickstr-v2.js`):**
+- Added two new Redis sorted sets: `clickstr:v2:leaderboard:alltime` and `clickstr:v2:leaderboard:earned`.
+- Leaderboard endpoint accepts `?type=epoch|alltime|earned` query param.
+- Click handler writes to alltime sorted set on every click submission.
+- User stats handler lazily populates both alltime and earned sorted sets from Redis totals and on-chain registry data (fire-and-forget).
+- Admin reset and per-user reset clean up the new keys.
+- Note: Wallets that clicked before this change won't appear on alltime/earned until they reconnect (triggers the lazy backfill via stats fetch).
+
+**Frontend (`clickstrv2`):**
+- HTML: 3 toggle buttons (Epoch / Clicks / Earned).
+- `fetchV2Leaderboard()` accepts a `type` param, passes it to the API.
+- `MergedLeaderboardEntry` gained `totalEarned?: string` field.
+- Earned tab displays token amounts (wei-to-token conversion via `formatWeiAsTokens()`) in gold color.
+- Rankings modal ("See All Rankings") updated with matching 3-tab layout for V2.
+- Removed all bot indicators (🤖) from leaderboard rendering.
+
+**Mint modal z-index fix:**
+- Added `--z-modal-top: 50001` CSS variable.
+- `#claim-modal` now uses the higher z-index so the individual NFT mint modal renders above the collection modal on mobile.
+
 ## Open Items
-- Deploy new contract with security fixes and test end-to-end.
 - Test claims with NFT bonuses end-to-end.
-- ~~Restore `_epochDuration >= 1 hours` guard before mainnet V2.~~ Done (Feb 8).
 - Rotate the admin secret (was exposed in session context).
 - Clean up any incorrect Redis achievements from the pre-fix `syncAchievements` behavior.
+- Consider mitigation for paid Turnstile solver services (rate limiting per address, anomaly detection).
+
+## Bot Penetration Test (Feb 8, 2026)
+
+Built two bots (`bot/`) to attack the game's anti-bot defenses.
+
+- **Level 1 (token replay)**: Node.js miner + raw API submission. PoW was trivially replicated (~90K H/s), but a real Turnstile token copied from the browser was rejected when replayed from a different process. Tokens are session/IP-bound.
+- **Level 2 (headless browser)**: Puppeteer + stealth plugin on live clickstr.fun. Turnstile detected the automated browser and refused to load the challenge iframe. Both headless and visible modes failed.
+- **Conclusion**: Turnstile is the real defense (not PoW). It blocks token replay and headless browsers. Only remaining theoretical risk is paid solver services.
+
+Full details in `docs/security.md`.
+
+## Fresh Sepolia Deploy - 24h Game (Feb 8, 2026)
+
+Deployed for bot testing. Redis reset (26 keys). Same parameters as previous deploy.
+
+**Contracts:**
+- ClickRegistry: `0x8945ad6dbA24C90998175bC007d6B2B81c650a61`
+- ClickstrGameV2: `0xAce0502aC3DE5BcDa8BAF8499D9e4f2a2c295430`
+- ClickstrNFTV2: `0xDD866DbCbf3120C62e46cdB97183aB3F71999ebd`
+- ClickstrTreasury (existing): `0x82378b6C7247b02f4b985Aca079a0A85E0D2cbAe`
+
+**Game window:**
+- Start: 2026-02-08T16:56:12.000Z
+- End: 2026-02-09T16:56:12.000Z
 
 ## Mint Panel & Collection Modal Fixes (Feb 8, 2026)
 

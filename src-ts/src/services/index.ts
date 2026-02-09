@@ -63,6 +63,8 @@ export {
   claimV2Reward,
   checkV2Claimed,
   getV2ClaimedClicks,
+  finalizeElapsedEpochs,
+  getUnfinalizedEpochCount,
   refreshGameData,
   refreshUserStats,
 } from './contracts.ts';

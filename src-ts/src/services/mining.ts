@@ -182,7 +182,9 @@ function createWorkerCodeWithImportScripts(): string {
 }
 
 // Max difficulty target (easiest) for off-chain mining when no game is active
-const MAX_DIFFICULTY_TARGET = BigInt('0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
+// Must match server-side: MAX_UINT256 / 1000n (~1/1000 chance)
+const MAX_UINT256 = 2n ** 256n - 1n;
+const MAX_DIFFICULTY_TARGET = MAX_UINT256 / 1000n;
 
 /**
  * Start mining a single click
