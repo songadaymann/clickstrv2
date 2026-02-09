@@ -49,6 +49,7 @@ import {
   requestV2ClaimSignature,
   submitClicksV2,
   fetchV2Stats,
+  preloadSha3,
 } from './services/index.ts';
 
 // Import effects
@@ -220,6 +221,10 @@ async function init(): Promise<void> {
 
   // Initialize wallet subscriptions (must be early to catch connection events)
   initWalletSubscriptions();
+
+  // Preload sha3 library for mining workers (fetched in main thread to avoid
+  // Safari's importScripts restriction on blob workers with opaque origins)
+  preloadSha3();
 
   // Initialize effects
   initEffects();
