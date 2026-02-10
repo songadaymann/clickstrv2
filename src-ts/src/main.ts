@@ -177,6 +177,8 @@ let targetClicksPerEpoch: bigint = 0n;
 let epochBudget: bigint = 0n;
 let v2ClaimableEpochs: V2ClaimableEpoch[] = [];
 let v2IsClaimingInProgress = false;
+let deferMintModal = false; // true while claim flow is in progress, prevents mint modal from interrupting wallet prompts
+let deferredClaimables: ClaimState[] = []; // achievements queued during claim flow, shown after completion
 
 // Additional DOM elements for NFT/Collection
 let nftPanel: HTMLElement;
@@ -1462,7 +1464,12 @@ async function handleV2Claim(e: Event): Promise<void> {
       gameState.setAllTimeClicks(submitResult.lifetimeClicks);
     }
 
+    // Defer mint modal during the claim flow so wallet prompts aren't interrupted
+    deferMintModal = true;
+    deferredClaimables = [];
+
     // Handle achievements from submit response (NFT milestones work between games)
+    // Toasts still show immediately; only the mint modal is deferred until claim completes
     if (submitResult.newMilestones && submitResult.newMilestones.length > 0) {
       handleAchievements({ newMilestones: submitResult.newMilestones });
     }
@@ -1493,6 +1500,7 @@ async function handleV2Claim(e: Event): Promise<void> {
         serverStats = serverStatsRefresh;
         await renderNftPanel(serverStatsRefresh);
       }
+      processDeferredMintModals();
       return;
     }
 
@@ -1508,6 +1516,7 @@ async function handleV2Claim(e: Event): Promise<void> {
       // Turnstile needed - modal already shown by requestV2ClaimAttestation
       claimBtn.disabled = false;
       removeClass(claimBtn, 'claiming');
+      processDeferredMintModals();
       return;
     }
 
@@ -1517,6 +1526,7 @@ async function handleV2Claim(e: Event): Promise<void> {
       setTimeout(() => updateSubmitButton(), 2000);
       claimBtn.disabled = false;
       removeClass(claimBtn, 'claiming');
+      processDeferredMintModals();
       return;
     }
 
@@ -1530,6 +1540,7 @@ async function handleV2Claim(e: Event): Promise<void> {
       setTimeout(() => updateSubmitButton(), 2000);
       claimBtn.disabled = false;
       removeClass(claimBtn, 'claiming');
+      processDeferredMintModals();
       return;
     }
     console.log('[V2 Claim] Incremental claim:', alreadyClaimedClicks, '->', sigResponse.clickCount, 'clicks');
@@ -1575,6 +1586,7 @@ async function handleV2Claim(e: Event): Promise<void> {
     claimBtn.disabled = false;
     removeClass(claimBtn, 'claiming');
     updateSubmitButton();
+    processDeferredMintModals();
 
   } catch (error) {
     console.error('[V2 Claim] Error:', error);
@@ -1582,6 +1594,24 @@ async function handleV2Claim(e: Event): Promise<void> {
     setTimeout(() => updateSubmitButton(), 2000);
     claimBtn.disabled = false;
     removeClass(claimBtn, 'claiming');
+    processDeferredMintModals();
+  }
+}
+
+/**
+ * Process any NFT mint modals that were deferred during the claim flow.
+ * Called after the claim transaction completes (success or failure).
+ */
+function processDeferredMintModals(): void {
+  deferMintModal = false;
+  if (deferredClaimables.length > 0) {
+    const claimable = [...deferredClaimables];
+    deferredClaimables = [];
+    setTimeout(() => {
+      const first = claimable.shift()!;
+      gameState.addToClaimQueue(...claimable);
+      showClaimModal(first.milestoneId, first.tier);
+    }, 1000);
   }
 }
 
@@ -1633,13 +1663,18 @@ function handleAchievements(data: {
     celebratePersonalMilestone();
   }
 
-  // Queue claims
+  // Queue claims — defer modal if a claim transaction is in progress
   if (claimable.length > 0 && hasNftContract()) {
-    setTimeout(() => {
-      const first = claimable.shift()!;
-      gameState.addToClaimQueue(...claimable);
-      showClaimModal(first.milestoneId, first.tier);
-    }, 2000);
+    if (deferMintModal) {
+      // Claim flow is in progress — save for later so modal doesn't interrupt wallet prompts
+      deferredClaimables.push(...claimable);
+    } else {
+      setTimeout(() => {
+        const first = claimable.shift()!;
+        gameState.addToClaimQueue(...claimable);
+        showClaimModal(first.milestoneId, first.tier);
+      }, 2000);
+    }
   }
 }
 
