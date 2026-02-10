@@ -25,7 +25,7 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
     chainId: 1,
     chainName: 'Ethereum',
     rpcUrl: import.meta.env.VITE_ETH_MAINNET_RPC_URL || '',
-    contractAddress: '0xACBA29C4a55D69c4631CAf68376AEe78f7A59f6F', // ClickstrGameV2 Season 2 (6 epochs x 4h = 24h)
+    contractAddress: '0xf6055889a000dfe93ce3795ebc99d2f44b2282f1', // ClickstrGameV2 Season 3 (3 epochs x 24h = 3 days)
     tokenAddress: '0x7ddbd0c4a0383a0f9611b715809f92c90e1d991d', // $CLICK token via TokenWorks
     nftContractAddress: '0x43693922EE81D4930fDFCB03DEEA6d75e41c05b0', // ClickstrNFTV2 (mainnet)
     turnstileSiteKey: '0x4AAAAAACV0UOMmCeG_g2Jr',

@@ -67,6 +67,16 @@ export const GAMES: GameConfig[] = [
     subgraphUrl: '', // V2 uses off-chain Redis leaderboards, no subgraph needed
     contractAddress: '0xACBA29C4a55D69c4631CAf68376AEe78f7A59f6F', // ClickstrGameV2 Season 2
     startDate: '2026-02-09',
+    endDate: '2026-02-10',
+    isActive: false,
+    isBeta: false,
+  },
+  {
+    id: 'season-3',
+    name: 'Season 3',
+    subgraphUrl: '', // V2 uses off-chain Redis leaderboards, no subgraph needed
+    contractAddress: '0xf6055889a000dfe93ce3795ebc99d2f44b2282f1', // ClickstrGameV2 Season 3
+    startDate: '2026-02-10',
     endDate: null,
     isActive: true,
     isBeta: false,

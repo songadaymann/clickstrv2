@@ -109,7 +109,8 @@ Notes on seeding:
 ## Fresh Sepolia Deploy (Keep Treasury)
 Use this when you want a clean slate on Sepolia but keep the existing treasury.
 
-1. (Optional but recommended) Reset Redis data so no old achievements or clicks show up:
+1. (Optional — **Sepolia/test only**) Reset Redis data so no old achievements or clicks show up:
+   - **WARNING: This WIPES ALL player points, leaderboards, and milestones. Do NOT use on mainnet between seasons — players' accumulated clicks carry over.**
    - `POST /api/clickstr-admin-reset` with `{"secret":"<CLICKSTR_ADMIN_SECRET>"}` (no address = reset all).
    - The body key is `secret` (not `adminSecret`). The value must match the `CLICKSTR_ADMIN_SECRET` env var on the server.
    - To reset a single user, add `"address":"0x..."` to the body.

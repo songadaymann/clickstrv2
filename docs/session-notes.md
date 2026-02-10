@@ -1,6 +1,6 @@
 # Clickstr V2 Session Notes (Consolidated)
 
-Last updated: 2026-02-09
+Last updated: 2026-02-10
 
 This is a trimmed, V2-only summary of progress. V1 content intentionally omitted.
 
@@ -124,6 +124,50 @@ Removed the bot-vs-human leaderboard concept (V2 is human-only). Replaced the tw
 **Mint modal z-index fix:**
 - Added `--z-modal-top: 50001` CSS variable.
 - `#claim-modal` now uses the higher z-index so the individual NFT mint modal renders above the collection modal on mobile.
+
+## Mainnet Launch — Season 2 Soft Launch (Feb 10, 2026)
+
+Migrated the entire stack from Sepolia to Ethereum mainnet for a 1-day soft launch beta.
+
+**Infrastructure deployment (permanent contracts):**
+Deployed Treasury, Registry, and NFT contracts to mainnet using a new infra-only deploy script (`scripts/deploy-v2-infra.js`). These are permanent — only game contracts change per season.
+
+- ClickRegistry: `0xDA47fbc8DcBeef8069859416e0fdC2Ac62bDd576`
+- ClickstrTreasury: `0x25e34963231de4451846cBb1A4ACEfa56c81f4e4`
+- ClickstrNFTV2: `0x43693922EE81D4930fDFCB03DEEA6d75e41c05b0`
+- All verified on Etherscan. Deployment record saved to `mainnet/deployment-v2-infra.json`.
+
+**TokenWorks allowlisting:**
+Treasury was allowlisted by Adam (TokenWorks whitelist manager) so it can transfer $CLICK tokens. Treasury is the only contract that calls `safeTransfer`, so this is a one-time operation — no further allowlisting needed for future seasons.
+
+**Treasury funding:** 1,000,000 CLICK tokens transferred to the Treasury.
+
+**Sepolia-to-mainnet migration (systematic, following `docs/deployment.md` checklist):**
+- `main.ts`: `IS_V2 = true` (was `CURRENT_NETWORK === 'sepolia'`)
+- `contracts.ts`: `IS_V2 = true` (same)
+- `network.ts`: API URL unconditionally set to `/api/clickstr-v2`; mainnet contract addresses updated
+- `games.ts`: Season 1 set to `isActive: false`; Season 2 added with `isActive: true`
+- Vercel env vars updated on both `mann.cool` (server) and `clickstr.fun` (frontend)
+- AppKit and Turnstile: no code changes needed (already support mainnet)
+
+**Game Season 2 deployment:**
+Deployed `ClickstrGameV2` on mainnet via Hardhat console (worked around ethers.js BAD_DATA bug with Node.js v23.11.0 by polling for tx receipts instead of using `waitForDeployment()`).
+
+- ClickstrGameV2 (Season 2): `0xACBA29C4a55D69c4631CAf68376AEe78f7A59f6F`
+- Parameters: 6 epochs × 4 hours = 24 hours, 1M CLICK pool
+- Authorized in registry and treasury
+- NFT contract set, tier bonuses configured (2%, 3%, 5%, 7%, 10%)
+- Game started on-chain
+- Verified on Etherscan
+
+**Build fix:** Removed unused `CURRENT_NETWORK` imports from `main.ts` and `contracts.ts` that caused TypeScript `noUnusedLocals` errors after the IS_V2 change.
+
+**Full mainnet readiness audit:** Verified all files (network.ts, games.ts, main.ts, contracts.ts, index.html) have correct mainnet addresses and no Sepolia references remain in active code paths.
+
+**Redis admin reset:** Wiped 50 Redis keys (all V2 leaderboards, difficulty, epoch data) for clean mainnet start.
+
+**Click-to-copy leaderboard feature:**
+Added click-to-copy address functionality to both the sidebar leaderboard (`.leaderboard-name`) and the full rankings modal (`.rankings-name`). Clicking a player name copies their full address to clipboard with a toast notification. Added `cursor: pointer` and hover glow styles. Also applied missing `escapeHtml()` to rankings modal entries (XSS fix).
 
 ## Open Items
 - Test claims with NFT bonuses end-to-end.

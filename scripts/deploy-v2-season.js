@@ -242,7 +242,9 @@ async function main() {
   console.log(`   contractAddress: '${gameAddress}'`);
   console.log("\n2. Update Vercel env var for mann.cool API:");
   console.log(`   CLICKSTR_GAME_V2_ADDRESS=${gameAddress}`);
-  console.log("\n3. Reset Redis click data (if testing):");
+  console.log("\n3. Reset Redis click data:");
+  console.log("   ⚠️  WARNING: This WIPES ALL player points, leaderboards, and milestones!");
+  console.log("   ⚠️  Only use this for test/Sepolia deploys. Do NOT run on mainnet between seasons!");
   console.log(`   curl -X POST https://mann.cool/api/clickstr-admin-reset -H "Content-Type: application/json" -d '{"secret": "YOUR_ADMIN_SECRET"}'`);
   console.log("\n4. (Optional) Deploy/update subgraph for new game contract");
 
