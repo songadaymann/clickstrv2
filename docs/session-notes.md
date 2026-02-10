@@ -169,7 +169,40 @@ Deployed `ClickstrGameV2` on mainnet via Hardhat console (worked around ethers.j
 **Click-to-copy leaderboard feature:**
 Added click-to-copy address functionality to both the sidebar leaderboard (`.leaderboard-name`) and the full rankings modal (`.rankings-name`). Clicking a player name copies their full address to clipboard with a toast notification. Added `cursor: pointer` and hover glow styles. Also applied missing `escapeHtml()` to rankings modal entries (XSS fix).
 
+## Season 3 Launch & Bug Fixes (Feb 10, 2026)
+
+**Season 3 deployment (3 days, 3M CLICK):**
+- ClickstrGameV2 Season 3: `0xf6055889a000dfe93ce3795ebc99d2f44b2282f1`
+- 3 epochs x 24h = 3 days, 3M CLICK pool, reuses existing mainnet infra
+- Deploy script crashed mid-way due to ethers.js/Node v23 BAD_DATA bug (same as Season 2). Contract deployed successfully but setup steps didn't run. Wrote `scripts/finish-season3-setup.js` to complete authorization, NFT bonuses, and game start.
+- Verified on Etherscan (auto-verified from matching bytecode).
+
+**NFT base URI fix:**
+- NFT metadata was returning 404 — baseURI was `ipfs://QmP7.../` but files are at `ipfs://QmP7.../clickstr-metadata/`.
+- Called `setBaseURI` on mainnet NFT contract to add the missing path segment. One transaction, done.
+
+**Mint modal race condition fix:**
+- NFT mint modal was popping up mid-claim (after server submit but before on-chain tx), stealing focus from wallet prompts and causing claims to fail repeatedly.
+- Fix: added `deferMintModal` flag. During the claim flow, achievement toasts still show immediately but the mint modal is queued and only displayed after the full claim flow (wallet signature + on-chain tx) completes. All exit paths (success, failure, early return) call `processDeferredMintModals()`.
+
+**Admin reset safety warnings:**
+- Added prominent warnings around all Redis admin reset references (deploy script output, deployment docs, SKILL.md) to prevent accidental point wipes between seasons.
+
+**Removed bot section from help modal:**
+- V2 is human-only; removed the "Scripts Welcome" section that linked to the now-irrelevant bot.html page.
+
+**External bot analysis:**
+- Community member published `clickstr-bot` on GitHub — offline PoW miner + localStorage injection.
+- Bot can inflate leaderboard (clicks accepted by server via real browser Turnstile) but cannot claim tokens (wallet signature + on-chain tx required).
+- Top 5 leaderboard positions are suspected bots. Next step: add manual bot flagging and a "Bots" tab to the leaderboard.
+
 ## Open Items
+- **Bot flagging**: Add manual bot list to server API, filter bots from main leaderboard, add "Bots" tab to rankings modal. Flagged addresses:
+  - `0xd3a954764ee75f1df4142d853e70d2b7e5884d89`
+  - `0xdad91ea7b6acf1cedf3f374dfb73ffc1a5ae75e5`
+  - `0x74ac3770e1c8c1580ad04e98657da2975df6c689`
+  - `0x736f54a30eb7ba91a0f3486bbd7cb1dea338b6da`
+  - `0x455da13a80afe335f51bb4593421d81b8f86fc89`
 - Test claims with NFT bonuses end-to-end.
 - Rotate the admin secret (was exposed in session context).
 - Clean up any incorrect Redis achievements from the pre-fix `syncAchievements` behavior.
