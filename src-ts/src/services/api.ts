@@ -751,13 +751,14 @@ export async function sendHeartbeatV2(address: string): Promise<HeartbeatRespons
 /**
  * V2 leaderboard types
  */
-export type V2LeaderboardType = 'epoch' | 'alltime' | 'earned';
+export type V2LeaderboardType = 'epoch' | 'alltime' | 'earned' | 'bots';
 
 /**
  * Fetch V2 leaderboard by type
  * - 'epoch': current epoch clicks (default)
  * - 'alltime': all-time total clicks
  * - 'earned': all-time earned tokens
+ * - 'bots': flagged bot addresses (all-time clicks)
  * Returns MergedLeaderboardEntry[] for compatibility with existing leaderboard rendering
  */
 export async function fetchV2Leaderboard(limit = 50, type: V2LeaderboardType = 'epoch', epoch?: number): Promise<MergedLeaderboardEntry[]> {
@@ -782,7 +783,6 @@ export async function fetchV2Leaderboard(limit = 50, type: V2LeaderboardType = '
     };
     if (data.success && data.leaderboard) {
       // Convert to MergedLeaderboardEntry format
-      // V2 is human-only so all entries are human
       return data.leaderboard.map((entry) => ({
         address: entry.address,
         name: entry.name ?? null,
@@ -790,7 +790,7 @@ export async function fetchV2Leaderboard(limit = 50, type: V2LeaderboardType = '
         totalEarned: entry.totalEarned ?? null,
         frontendClicks: entry.totalClicks ?? 0,
         rank: entry.rank,
-        isHuman: true, // V2 requires Turnstile verification
+        isHuman: type !== 'bots', // Bots tab entries are not human
       }));
     }
     return [];

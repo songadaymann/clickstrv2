@@ -197,6 +197,7 @@ let claimLaterBtn: HTMLButtonElement;
 let leaderboardToggleEpoch: HTMLButtonElement;
 let leaderboardToggleAlltime: HTMLButtonElement;
 let leaderboardToggleEarned: HTMLButtonElement;
+let leaderboardToggleBots: HTMLButtonElement;
 
 // Rankings modal elements
 let rankingsTabsEl: HTMLElement;
@@ -323,6 +324,7 @@ function cacheElements(): void {
   leaderboardToggleEpoch = getElement<HTMLButtonElement>('leaderboard-toggle-epoch');
   leaderboardToggleAlltime = getElement<HTMLButtonElement>('leaderboard-toggle-alltime');
   leaderboardToggleEarned = getElement<HTMLButtonElement>('leaderboard-toggle-earned');
+  leaderboardToggleBots = getElement<HTMLButtonElement>('leaderboard-toggle-bots');
 
   // Rankings modal elements
   rankingsTabsEl = getElement('rankings-tabs');
@@ -438,6 +440,7 @@ function setupEventListeners(): void {
   leaderboardToggleEpoch.addEventListener('click', () => setLeaderboardMode('epoch'));
   leaderboardToggleAlltime.addEventListener('click', () => setLeaderboardMode('alltime'));
   leaderboardToggleEarned.addEventListener('click', () => setLeaderboardMode('earned'));
+  leaderboardToggleBots.addEventListener('click', () => setLeaderboardMode('bots'));
 
   // Lightbox
   setupLightboxListeners();
@@ -1929,13 +1932,14 @@ function setLeaderboardMode(mode: V2LeaderboardType): void {
   leaderboardMode = mode;
 
   // Update toggle button states
-  const toggles = [leaderboardToggleEpoch, leaderboardToggleAlltime, leaderboardToggleEarned];
+  const toggles = [leaderboardToggleEpoch, leaderboardToggleAlltime, leaderboardToggleEarned, leaderboardToggleBots];
   for (const btn of toggles) {
     removeClass(btn, 'active');
   }
   if (mode === 'epoch') addClass(leaderboardToggleEpoch, 'active');
   else if (mode === 'alltime') addClass(leaderboardToggleAlltime, 'active');
   else if (mode === 'earned') addClass(leaderboardToggleEarned, 'active');
+  else if (mode === 'bots') addClass(leaderboardToggleBots, 'active');
 
   // Refresh leaderboard
   fetchLeaderboard();
@@ -1966,6 +1970,7 @@ function renderLeaderboard(): void {
       epoch: 'No clicks this epoch!',
       alltime: 'No clicks yet!',
       earned: 'No earnings yet!',
+      bots: 'No flagged bots',
     };
     setHtml(leaderboardListEl, `<li class="leaderboard-loading">${emptyMessages[leaderboardMode]}</li>`);
     return;
@@ -1989,10 +1994,13 @@ function renderLeaderboard(): void {
       const displayName = escapeHtml(rawName);
       const safeAddress = escapeHtml(entry.address);
 
+      const isBotMode = leaderboardMode === 'bots';
       const milestone = getHighestMilestone(entry.totalClicks);
-      const iconHtml = milestone
-        ? `<img src="cursors/${escapeHtml(milestone.cursor)}.png" class="leaderboard-cursor-icon" alt="${escapeHtml(milestone.name)}">`
-        : `<span class="leaderboard-indicator">🧑</span>`;
+      const iconHtml = isBotMode
+        ? `<span class="leaderboard-indicator leaderboard-bot-icon">🤖</span>`
+        : milestone
+          ? `<img src="cursors/${escapeHtml(milestone.cursor)}.png" class="leaderboard-cursor-icon" alt="${escapeHtml(milestone.name)}">`
+          : `<span class="leaderboard-indicator">🧑</span>`;
 
       // Show earned amount for earned tab, click count otherwise
       const valueHtml = isEarned && entry.totalEarned
