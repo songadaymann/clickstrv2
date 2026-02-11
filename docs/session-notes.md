@@ -219,12 +219,42 @@ Added click-to-copy address functionality to both the sidebar leaderboard (`.lea
 - `0x736f54a30eb7ba91a0f3486bbd7cb1dea338b6da`
 - `0x455da13a80afe335f51bb4593421d81b8f86fc89`
 
+## Batch Size Increase, Admin Dashboard & Attested-Clicks Difficulty (Feb 11, 2026)
+
+**Batch size increase (500 -> 3000):**
+Raised the max clicks per submission from 500 to 3000 across the entire stack:
+- Frontend: `network.ts` maxBatchSize, `index.html` tooltip text
+- Server: rate limit default (`RATE_LIMIT_MAX_NONCES`), hard batch cap
+- Docs: `security.md`, `bot.html`, `session-notes.md`
+
+**Admin dashboard (`admin.html` + server endpoints):**
+Built a comprehensive admin dashboard for monitoring game health. Server-side data collection layer captures point-in-time snapshots every 5 minutes (difficulty, active users, click velocity, bot/human ratios, epoch progress, global earned). Event logging tracks difficulty changes and claim attestations.
+
+- `?dashboard=true&range=24h|7d|30d` — full dashboard response (currentState, epochs, timeseries, difficulty/claim history)
+- `?history=snapshots|difficulty|claims&from=TS&to=TS` — targeted historical queries
+- Vercel cron job triggers snapshot capture every 5 min
+- Frontend: standalone HTML page with Chart.js — metric cards, time-series charts (clicks, users, velocity, difficulty, bot ratio), epoch table, claim/difficulty event logs, auto-refresh every 30s
+
+**Critical design fix — attested-clicks-based difficulty:**
+Discovered that the difficulty system was fundamentally broken. It targeted 1M raw clicks per epoch, but bots inflated raw clicks (70% of all clicks, 3.1M in epoch 1) without claiming tokens. Only 42K $CLICK was actually claimed. Difficulty was punishing real players while tokens sat undistributed.
+
+Fix: switched difficulty adjustment from raw clicks to **attested clicks** — only clicks that were included in a claim attestation request count toward the difficulty target. This makes bots that mine without claiming invisible to the difficulty algorithm.
+
+- New Redis key `V2_EPOCH_ATTESTED_KEY(epoch)` tracks attested clicks per epoch
+- Incremented in the claim attestation handler (with delta handling for incremental claims)
+- `adjustDifficultyIfNeeded()` reads attested clicks instead of raw clicks for Bitcoin-style adjustment
+- Dashboard and difficulty endpoints return both raw and attested metrics
+- Admin dashboard updated to show attested vs raw clicks in cards, epoch table, and difficulty events
+
+**Current state after deploy:** Epoch 1 has 3.14M raw clicks but 0 attested (counter tracks going forward only). Difficulty is at minimum. Next epoch transition will see low attested clicks and keep difficulty low — exactly the desired behavior.
+
 ## Open Items
 - Test claims with NFT bonuses end-to-end.
 - Rotate the admin secret (was exposed in session context).
 - Clean up any incorrect Redis achievements from the pre-fix `syncAchievements` behavior.
 - Consider server-issued mining challenges (short-lived tokens included in PoW) to structurally prevent offline mining.
 - Bots can create new addresses to evade the flagged list — monitor for new suspicious patterns.
+- Monitor attested clicks accumulation as players claim — verify difficulty adjusts correctly at epoch boundaries.
 
 ## Bot Penetration Test (Feb 8, 2026)
 

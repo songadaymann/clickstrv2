@@ -8,6 +8,7 @@ export {
   formatTokensSplit,
   formatTokensLegacy,
   formatWeiAsTokens,
+  formatWeiSplit,
   shortenAddress,
   formatDate,
   formatDuration,

@@ -67,6 +67,21 @@ export function formatWeiAsTokens(weiStr: string): string {
 }
 
 /**
+ * Format a wei string split into value and suffix (for seven-segment displays)
+ */
+export function formatWeiSplit(weiStr: string): { value: string; suffix: string } {
+  try {
+    const wei = BigInt(weiStr);
+    const whole = wei / BigInt(10 ** 18);
+    const frac = wei % BigInt(10 ** 18);
+    const amount = Number(whole) + Number(frac) / 1e18;
+    return formatTokensSplit(amount);
+  } catch {
+    return { value: '0', suffix: '' };
+  }
+}
+
+/**
  * Shorten an Ethereum address for display
  */
 export function shortenAddress(addr: string | null | undefined): string {

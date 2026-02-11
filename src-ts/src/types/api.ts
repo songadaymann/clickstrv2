@@ -148,6 +148,7 @@ export interface ActiveUsersResponse {
   activeHumans: number;
   activeBots: number;
   globalClicks?: number;
+  globalEarned?: string; // wei string
 }
 
 /** Heartbeat response */

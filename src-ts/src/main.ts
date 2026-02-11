@@ -87,6 +87,7 @@ import {
   formatTokens,
   formatTokensSplit,
   formatWeiAsTokens,
+  formatWeiSplit,
   shortenAddress,
 } from './utils/index.ts';
 
@@ -134,6 +135,8 @@ let epochInfoEl: HTMLElement;
 let poolInfoEl: HTMLElement;
 let headerAlltimeClicksEl: HTMLElement;
 let headerAlltimeSuffixEl: HTMLElement;
+let alltimeToggleEl: HTMLElement;
+let alltimeLabelEl: HTMLElement;
 let arcadeCurrentEl: HTMLElement;
 let arcadeAlltimeEl: HTMLElement;
 let arcadeEarnedEl: HTMLElement;
@@ -179,6 +182,9 @@ let v2ClaimableEpochs: V2ClaimableEpoch[] = [];
 let v2IsClaimingInProgress = false;
 let deferMintModal = false; // true while claim flow is in progress, prevents mint modal from interrupting wallet prompts
 let deferredClaimables: ClaimState[] = []; // achievements queued during claim flow, shown after completion
+let isAutoSubmitting = false; // guard against concurrent auto-submits
+let alltimeShowEarned = false; // toggle: false = clicks, true = earned
+let cachedGlobalEarned: string = '0'; // wei string from server
 
 // Additional DOM elements for NFT/Collection
 let nftPanel: HTMLElement;
@@ -273,6 +279,8 @@ function cacheElements(): void {
   poolInfoEl = getElement('pool-info');
   headerAlltimeClicksEl = getElement('header-alltime-clicks');
   headerAlltimeSuffixEl = getElement('header-alltime-suffix');
+  alltimeToggleEl = getElement('alltime-toggle');
+  alltimeLabelEl = getElement('alltime-label');
   arcadeCurrentEl = getElement('arcade-current');
   arcadeAlltimeEl = getElement('arcade-alltime');
   arcadeEarnedEl = getElement('arcade-earned');
@@ -411,6 +419,12 @@ function setupEventListeners(): void {
 
   // Claim button (V2) - glowing green, full claim flow
   claimBtn.addEventListener('click', handleV2Claim);
+
+  // All-Time header toggle (clicks <-> earned)
+  alltimeToggleEl.addEventListener('click', () => {
+    alltimeShowEarned = !alltimeShowEarned;
+    refreshAlltimeDisplay();
+  });
 
   // Copy address button
   setupCopyAddressButton();
@@ -985,6 +999,16 @@ function pressDown(): void {
   playButtonDown();
 
   if (gameState.isConnected) {
+    // Block mining if pending nonces are at the batch cap — force user to submit first
+    if (gameState.pendingNonces.length >= CONFIG.maxBatchSize) {
+      console.log('[Button] pressDown BLOCKED - pending nonces at cap, submit first');
+      isPressed = false;
+      buttonImg.src = 'button-up.jpg';
+      // Pulse the claim/submit button to draw attention
+      addClass(claimBtn, 'has-clicks');
+      return;
+    }
+
     isMiningClick = true;
     console.log('[Button] Starting mining...');
     startMining(onClickMined);
@@ -1042,6 +1066,9 @@ function onClickMined(nonce: bigint): void {
       gameState.addClick(nonce);
       updateDisplays();
       updateSubmitButton();
+
+      // Auto-submit to server when batch is full (keeps nonces fresh vs difficulty changes)
+      maybeAutoSubmit();
     }
   }, remainingDelay);
 }
@@ -1399,6 +1426,70 @@ async function handleV2Submit(nonces: readonly bigint[]): Promise<void> {
     console.error('[V2 Submit] Error:', result.error);
     claimBtn.disabled = false;
     updateSubmitButton();
+  }
+}
+
+/**
+ * Auto-submit nonces to the server when the pending queue reaches maxBatchSize.
+ * This prevents nonces from going stale if difficulty changes mid-session.
+ * Only does the off-chain server submit (step 1) — on-chain claim stays manual.
+ */
+async function maybeAutoSubmit(): Promise<void> {
+  if (!IS_V2) return;
+  if (isAutoSubmitting) return;
+  if (!turnstileToken) return;
+  if (!gameState.userAddress) return;
+  if (gameState.pendingNonces.length < CONFIG.maxBatchSize) return;
+
+  isAutoSubmitting = true;
+  try {
+    const nonces = gameState.pendingNonces.slice(0, CONFIG.maxBatchSize);
+    console.log(`[AutoSubmit] Submitting ${nonces.length} nonces to server`);
+
+    const result = await submitClicksV2(
+      gameState.userAddress,
+      nonces.map(n => n.toString()),
+      turnstileToken
+    );
+
+    if (result.success) {
+      console.log('[AutoSubmit] Success:', result);
+
+      if (result.lifetimeClicks !== undefined) {
+        gameState.setAllTimeClicks(result.lifetimeClicks);
+      }
+      if (result.difficultyTarget) {
+        gameState.setDifficulty(BigInt(result.difficultyTarget));
+      }
+
+      gameState.clearSubmittedClicks(nonces.length);
+      updateDisplays();
+      updateSubmitButton();
+
+      // Handle achievements
+      if (result.newMilestones && result.newMilestones.length > 0) {
+        handleAchievements({ newMilestones: result.newMilestones });
+      }
+      if (result.newAchievements && result.newAchievements.length > 0) {
+        handleAchievements({
+          newAchievements: result.newAchievements.map(a => ({
+            ...a,
+            name: a.name,
+            type: a.type as 'hidden' | 'global' | 'streak' | 'epoch',
+          })),
+        });
+      }
+    } else if (result.requiresVerification) {
+      console.log('[AutoSubmit] Turnstile expired, clearing token');
+      turnstileToken = null;
+      // Don't show modal — user will get prompted on next manual submit
+    } else {
+      console.warn('[AutoSubmit] Failed:', result.error);
+    }
+  } catch (err) {
+    console.error('[AutoSubmit] Error:', err);
+  } finally {
+    isAutoSubmitting = false;
   }
 }
 
@@ -1898,14 +1989,26 @@ function updateSubmitButton(): void {
   if (IS_V2) {
     // V2: Use green Claim button (or "Submit" between games)
     removeClass(submitContainer, 'visible'); // Hide V1 submit button
+
+    const atCap = gameState.pendingNonces.length >= CONFIG.maxBatchSize;
     claimBtn.disabled = !canSubmit;
     const label = gameState.isGameActive ? 'Claim' : 'Submit';
-    setText(claimBtn, `${label} (${gameState.validClicks})`);
+
+    if (atCap) {
+      // Hard cap reached — force user to submit before more clicking
+      setText(claimBtn, `${label} to keep clicking!`);
+      addClass(claimContainer, 'visible');
+      addClass(claimBtn, 'has-clicks');
+      buttonImg.style.opacity = '0.4';
+    } else {
+      setText(claimBtn, `${label} (${gameState.validClicks})`);
+      buttonImg.style.opacity = '1';
+    }
 
     if (hasEnoughClicks) {
       addClass(claimContainer, 'visible');
       addClass(claimBtn, 'has-clicks'); // Trigger pulsing animation
-    } else {
+    } else if (!atCap) {
       removeClass(claimContainer, 'visible');
       removeClass(claimBtn, 'has-clicks');
     }
@@ -2205,6 +2308,23 @@ function stopHeartbeat(): void {
 }
 
 /**
+ * Refresh the All-Time header display based on current toggle state
+ */
+function refreshAlltimeDisplay(): void {
+  if (alltimeShowEarned) {
+    setText(alltimeLabelEl, 'Earned');
+    const formatted = formatWeiSplit(cachedGlobalEarned);
+    setText(headerAlltimeClicksEl, formatted.value);
+    setText(headerAlltimeSuffixEl, formatted.suffix ? formatted.suffix + ' $C' : '$C');
+  } else {
+    setText(alltimeLabelEl, 'All-Time');
+    const formatted = formatTokensSplit(gameState.globalClicks);
+    setText(headerAlltimeClicksEl, formatted.value);
+    setText(headerAlltimeSuffixEl, formatted.suffix);
+  }
+}
+
+/**
  * Fetch and display global stats (active players)
  */
 async function updateGlobalStats(): Promise<void> {
@@ -2215,12 +2335,16 @@ async function updateGlobalStats(): Promise<void> {
     // Update displays
     setText(activeHumansEl, activeUsers.activeHumans.toString());
 
-    // Update all-time clicks in header with k/M suffix formatting
+    // Cache values for toggle display
     if (activeUsers.globalClicks !== undefined) {
-      const formatted = formatTokensSplit(activeUsers.globalClicks);
-      setText(headerAlltimeClicksEl, formatted.value);
-      setText(headerAlltimeSuffixEl, formatted.suffix);
+      gameState.setGlobalClicks(activeUsers.globalClicks);
     }
+    if (activeUsers.globalEarned !== undefined) {
+      cachedGlobalEarned = activeUsers.globalEarned;
+    }
+
+    // Update the header based on current toggle state
+    refreshAlltimeDisplay();
   } catch (error) {
     console.warn('Failed to update global stats:', error);
   }

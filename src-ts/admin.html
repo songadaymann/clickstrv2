@@ -89,7 +89,14 @@
       padding: 14px; margin-bottom: 20px;
     }
     .bot-list h3 { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
-    .bot-addr { font-size: 12px; color: var(--red); padding: 4px 0; }
+    .bot-list table { width: 100%; border-collapse: collapse; }
+    .bot-list th { text-align: left; color: var(--text2); font-size: 11px; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .bot-list td { padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 12px; }
+    .bot-list td.bot-addr { color: var(--red); word-break: break-all; cursor: pointer; }
+    .bot-list td.bot-addr:hover { color: var(--green); text-decoration: underline; }
+
+    /* Active indicator */
+    .active-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 6px; box-shadow: 0 0 4px var(--green); }
 
     /* Claim events */
     .events-box {
@@ -99,10 +106,34 @@
     .events-box h3 { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
     .event-row { font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); display: flex; gap: 12px; }
     .event-row .time { color: var(--text2); min-width: 80px; }
-    .event-row .addr { color: var(--blue); }
+    .event-row .addr { color: var(--blue); font-size: 11px; word-break: break-all; }
     .event-row .clicks { color: var(--green); }
 
     .loading { color: var(--text2); padding: 40px; text-align: center; }
+
+    /* All clickers table */
+    .all-clickers {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+      padding: 14px; margin-bottom: 20px;
+    }
+    .all-clickers h3 { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .all-clickers table { width: 100%; border-collapse: collapse; }
+    .all-clickers th { text-align: left; color: var(--text2); font-size: 11px; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+    .all-clickers th:hover { color: var(--green); }
+    .all-clickers th .sort-arrow { font-size: 9px; margin-left: 4px; }
+    .all-clickers td { padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 12px; }
+    .all-clickers td.addr-cell { font-family: inherit; color: var(--blue); word-break: break-all; cursor: pointer; }
+    .all-clickers td.addr-cell:hover { color: var(--green); text-decoration: underline; }
+    .all-clickers .count { color: var(--text); text-align: right; }
+    .all-clickers .earned { color: var(--green); text-align: right; }
+    .all-clickers .rank-num { color: var(--text2); text-align: center; }
+    .all-clickers .copied-toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--green); color: var(--bg); padding: 8px 16px; border-radius: 4px;
+      font-size: 12px; z-index: 1000; pointer-events: none;
+      animation: fadeout 1.5s forwards;
+    }
+    @keyframes fadeout { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
 
     @media (max-width: 800px) {
       .charts { grid-template-columns: 1fr; }
@@ -178,8 +209,13 @@
   </div>
 
   <div class="bot-list">
-    <h3>Flagged Bot Addresses</h3>
+    <h3>Flagged Bot Addresses <span id="bot-count" style="color:var(--text2)"></span></h3>
     <div id="bot-addrs"></div>
+  </div>
+
+  <div class="all-clickers">
+    <h3>All Clickers <span id="clicker-count" style="color:var(--text2)"></span></h3>
+    <div id="all-clickers-table"><span class="loading">Loading player data...</span></div>
   </div>
 
 <script>
@@ -313,7 +349,7 @@ function renderClaimEvents(claims) {
   el.innerHTML = recent.map(c => `
     <div class="event-row">
       <span class="time">${timeAgo(c.ts)}</span>
-      <span class="addr">${shortAddr(c.address)}</span>
+      <span class="addr">${c.address}</span>
       <span class="clicks">${formatNum(c.clicks)} clicks</span>
       <span>epoch ${c.epoch}</span>
       ${c.incremental ? '<span style="color:var(--yellow)">incremental</span>' : ''}
@@ -347,12 +383,197 @@ function renderDiffEvents(events) {
 }
 
 function renderBots(bots) {
+  // Only used as a fallback if fetchAllClickers hasn't populated botClickersData yet
+  if (botClickersData.length > 0) return; // renderBotTable handles it
   const el = document.getElementById('bot-addrs');
   if (!bots || bots.length === 0) {
     el.innerHTML = '<span style="color:#888">None flagged</span>';
     return;
   }
   el.innerHTML = bots.map(addr => `<div class="bot-addr">${addr}</div>`).join('');
+}
+
+function renderBotTable() {
+  const el = document.getElementById('bot-addrs');
+  const countEl = document.getElementById('bot-count');
+
+  if (botClickersData.length === 0) {
+    el.innerHTML = '<span style="color:#888">None flagged</span>';
+    countEl.textContent = '';
+    return;
+  }
+
+  countEl.textContent = `(${botClickersData.length} addresses)`;
+
+  let html = `<table>
+    <thead><tr>
+      <th style="width:40px">#</th>
+      <th>Address</th>
+      <th style="text-align:right">API Clicks</th>
+      <th style="text-align:right">$CLICK Earned</th>
+    </tr></thead><tbody>`;
+
+  botClickersData.forEach((entry, i) => {
+    const earnedDisplay = formatWei(entry.earned);
+    const isActive = activeAddressSet.has(entry.address.toLowerCase());
+    const dot = isActive ? '<span class="active-dot"></span>' : '';
+    html += `<tr>
+      <td class="rank-num">${i + 1}</td>
+      <td class="bot-addr" onclick="copyAddr('${entry.address}')">${dot}${entry.address}</td>
+      <td class="count">${formatNum(entry.clicks)}</td>
+      <td class="earned">${earnedDisplay}</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+// ============================================================================
+// ALL CLICKERS TABLE
+// ============================================================================
+
+let allClickersData = [];
+let botClickersData = [];
+let activeAddressSet = new Set();
+let clickerSortCol = 'clicks'; // 'clicks' or 'earned'
+let clickerSortAsc = false;    // descending by default
+
+async function fetchAllClickers() {
+  try {
+    // Fetch alltime clicks, earned, bots, and active addresses in parallel
+    const [clicksRes, earnedRes, botsClicksRes, botsEarnedRes, activeRes] = await Promise.all([
+      fetch(`${API_URL}?leaderboard=true&type=alltime&limit=9999`),
+      fetch(`${API_URL}?leaderboard=true&type=earned&limit=9999`),
+      fetch(`${API_URL}?leaderboard=true&type=bots&limit=9999`),
+      fetch(`${API_URL}?leaderboard=true&type=earned&limit=9999`),
+      fetch(`${API_URL}?activeUsers=true`),
+    ]);
+    const clicksData = await clicksRes.json();
+    const earnedData = await earnedRes.json();
+    const botsClicksData = await botsClicksRes.json();
+    const botsEarnedData = await botsEarnedRes.json();
+    const activeData = await activeRes.json();
+
+    // Update active addresses set
+    activeAddressSet = new Set((activeData.activeAddresses || []).map(a => a.toLowerCase()));
+
+    // Build a map: address -> { clicks, earned }
+    const map = {};
+    if (clicksData.success && clicksData.leaderboard) {
+      clicksData.leaderboard.forEach(e => {
+        const addr = e.address.toLowerCase();
+        if (!map[addr]) map[addr] = { address: e.address, clicks: 0, earned: '0' };
+        map[addr].clicks = e.totalClicks || 0;
+      });
+    }
+    if (earnedData.success && earnedData.leaderboard) {
+      earnedData.leaderboard.forEach(e => {
+        const addr = e.address.toLowerCase();
+        if (!map[addr]) map[addr] = { address: e.address, clicks: 0, earned: '0' };
+        map[addr].earned = e.totalEarned || '0';
+      });
+    }
+    allClickersData = Object.values(map);
+
+    // Build bot map with clicks and earned
+    const botMap = {};
+    if (botsClicksData.success && botsClicksData.leaderboard) {
+      botsClicksData.leaderboard.forEach(e => {
+        const addr = e.address.toLowerCase();
+        if (!botMap[addr]) botMap[addr] = { address: e.address, clicks: 0, earned: '0' };
+        botMap[addr].clicks = e.totalClicks || 0;
+      });
+    }
+    // Match bot earned from the full earned leaderboard
+    if (botsEarnedData.success && botsEarnedData.leaderboard) {
+      botsEarnedData.leaderboard.forEach(e => {
+        const addr = e.address.toLowerCase();
+        if (botMap[addr]) botMap[addr].earned = e.totalEarned || '0';
+      });
+    }
+    botClickersData = Object.values(botMap).sort((a, b) => b.clicks - a.clicks);
+
+    renderAllClickers();
+    renderBotTable();
+  } catch (err) {
+    console.error('Failed to fetch all clickers:', err);
+    document.getElementById('all-clickers-table').innerHTML =
+      '<span style="color:var(--red)">Failed to load player data</span>';
+  }
+}
+
+function sortClickers() {
+  allClickersData.sort((a, b) => {
+    let cmp;
+    if (clickerSortCol === 'earned') {
+      cmp = Number(BigInt(b.earned || '0') - BigInt(a.earned || '0'));
+    } else {
+      cmp = b.clicks - a.clicks;
+    }
+    return clickerSortAsc ? -cmp : cmp;
+  });
+}
+
+function renderAllClickers() {
+  const container = document.getElementById('all-clickers-table');
+  const countEl = document.getElementById('clicker-count');
+  if (allClickersData.length === 0) {
+    container.innerHTML = '<span style="color:#888">No clickers found</span>';
+    countEl.textContent = '';
+    return;
+  }
+
+  sortClickers();
+  countEl.textContent = `(${allClickersData.length} addresses)`;
+
+  const clicksArrow = clickerSortCol === 'clicks' ? (clickerSortAsc ? ' ▲' : ' ▼') : '';
+  const earnedArrow = clickerSortCol === 'earned' ? (clickerSortAsc ? ' ▲' : ' ▼') : '';
+
+  let html = `<table>
+    <thead><tr>
+      <th style="width:40px">#</th>
+      <th>Address</th>
+      <th style="text-align:right" id="sort-clicks">API Clicks<span class="sort-arrow">${clicksArrow}</span></th>
+      <th style="text-align:right" id="sort-earned">$CLICK Earned<span class="sort-arrow">${earnedArrow}</span></th>
+    </tr></thead><tbody>`;
+
+  allClickersData.forEach((entry, i) => {
+    const earnedDisplay = formatWei(entry.earned);
+    const isActive = activeAddressSet.has(entry.address.toLowerCase());
+    const dot = isActive ? '<span class="active-dot"></span>' : '';
+    html += `<tr>
+      <td class="rank-num">${i + 1}</td>
+      <td class="addr-cell" onclick="copyAddr('${entry.address}')">${dot}${entry.address}</td>
+      <td class="count">${formatNum(entry.clicks)}</td>
+      <td class="earned">${earnedDisplay}</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+
+  // Attach sort handlers
+  document.getElementById('sort-clicks').onclick = () => {
+    if (clickerSortCol === 'clicks') clickerSortAsc = !clickerSortAsc;
+    else { clickerSortCol = 'clicks'; clickerSortAsc = false; }
+    renderAllClickers();
+  };
+  document.getElementById('sort-earned').onclick = () => {
+    if (clickerSortCol === 'earned') clickerSortAsc = !clickerSortAsc;
+    else { clickerSortCol = 'earned'; clickerSortAsc = false; }
+    renderAllClickers();
+  };
+}
+
+function copyAddr(addr) {
+  navigator.clipboard.writeText(addr).then(() => {
+    const toast = document.createElement('div');
+    toast.className = 'copied-toast';
+    toast.textContent = 'Copied: ' + addr;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 1500);
+  });
 }
 
 // ============================================================================
@@ -462,6 +683,7 @@ async function refresh() {
     renderClaimEvents(data.claimHistory);
     renderDiffEvents(data.difficultyHistory);
     renderBots(data.currentState.flaggedBots);
+    fetchAllClickers();
 
     const now = new Date();
     statusEl.textContent = `Live - updated ${now.toLocaleTimeString()}`;
