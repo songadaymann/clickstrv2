@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clickstr Admin Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0a0f;
+      --bg2: #12121a;
+      --bg3: #1a1a25;
+      --border: #2a2a3a;
+      --text: #e0e0e8;
+      --text2: #888899;
+      --green: #00cc88;
+      --red: #ff4466;
+      --blue: #4488ff;
+      --yellow: #ffaa00;
+      --purple: #aa66ff;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 14px;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    h1 { font-size: 20px; color: var(--green); margin-bottom: 4px; }
+    .subtitle { color: var(--text2); font-size: 12px; margin-bottom: 20px; }
+    .controls {
+      display: flex; gap: 8px; align-items: center;
+      margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .controls button {
+      background: var(--bg3); color: var(--text); border: 1px solid var(--border);
+      padding: 6px 14px; cursor: pointer; font-family: inherit; font-size: 12px;
+      border-radius: 4px; transition: all 0.2s;
+    }
+    .controls button:hover { border-color: var(--green); }
+    .controls button.active { background: var(--green); color: var(--bg); border-color: var(--green); }
+    .controls .status { margin-left: auto; color: var(--text2); font-size: 11px; }
+    .controls .status.live { color: var(--green); }
+
+    /* Metric cards */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .card {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+      padding: 14px; display: flex; flex-direction: column;
+    }
+    .card .label { color: var(--text2); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .card .value { font-size: 22px; font-weight: 700; line-height: 1.2; }
+    .card .sub { color: var(--text2); font-size: 11px; margin-top: 4px; }
+    .card.green .value { color: var(--green); }
+    .card.red .value { color: var(--red); }
+    .card.blue .value { color: var(--blue); }
+    .card.yellow .value { color: var(--yellow); }
+    .card.purple .value { color: var(--purple); }
+
+    /* Charts */
+    .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .chart-box {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+      padding: 14px;
+    }
+    .chart-box h3 { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .chart-box canvas { width: 100% !important; height: 220px !important; }
+    .chart-box.wide { grid-column: 1 / -1; }
+
+    /* Epoch table */
+    .epoch-table {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+      padding: 14px; margin-bottom: 20px;
+    }
+    .epoch-table h3 { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; color: var(--text2); font-size: 11px; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    td { padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    td.status-active { color: var(--green); }
+    td.status-completed { color: var(--text2); }
+    td.status-upcoming { color: var(--yellow); }
+
+    /* Bot list */
+    .bot-list {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+      padding: 14px; margin-bottom: 20px;
+    }
+    .bot-list h3 { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .bot-addr { font-size: 12px; color: var(--red); padding: 4px 0; }
+
+    /* Claim events */
+    .events-box {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+      padding: 14px; margin-bottom: 20px;
+    }
+    .events-box h3 { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .event-row { font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); display: flex; gap: 12px; }
+    .event-row .time { color: var(--text2); min-width: 80px; }
+    .event-row .addr { color: var(--blue); }
+    .event-row .clicks { color: var(--green); }
+
+    .loading { color: var(--text2); padding: 40px; text-align: center; }
+
+    @media (max-width: 800px) {
+      .charts { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <h1>CLICKSTR ADMIN DASHBOARD</h1>
+  <div class="subtitle">Real-time game metrics and analytics</div>
+
+  <div class="controls">
+    <button class="active" data-range="24h">24H</button>
+    <button data-range="7d">7D</button>
+    <button data-range="30d">30D</button>
+    <button id="refresh-btn" title="Refresh now">Refresh</button>
+    <span class="status" id="status">Loading...</span>
+  </div>
+
+  <div class="cards" id="cards">
+    <div class="loading">Loading dashboard data...</div>
+  </div>
+
+  <div class="charts">
+    <div class="chart-box wide">
+      <h3>Clicks Over Time (from snapshots)</h3>
+      <canvas id="chart-clicks"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>Active Users</h3>
+      <canvas id="chart-users"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>Click Velocity (clicks/min)</h3>
+      <canvas id="chart-velocity"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>Difficulty (vs default)</h3>
+      <canvas id="chart-difficulty"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>Bot vs Human Clicks</h3>
+      <canvas id="chart-bots"></canvas>
+    </div>
+  </div>
+
+  <div class="epoch-table">
+    <h3>Epoch Breakdown (Season <span id="season-num">?</span>)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Epoch</th>
+          <th>Status</th>
+          <th>Total Clicks</th>
+          <th>Target</th>
+          <th>Progress</th>
+          <th>Players</th>
+        </tr>
+      </thead>
+      <tbody id="epoch-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="events-box">
+    <h3>Recent Claim Attestations</h3>
+    <div id="claim-events"><span class="loading">No claims recorded yet (tracking starts on deploy)</span></div>
+  </div>
+
+  <div class="events-box">
+    <h3>Difficulty Change Events</h3>
+    <div id="diff-events"><span class="loading">No difficulty changes recorded yet</span></div>
+  </div>
+
+  <div class="bot-list">
+    <h3>Flagged Bot Addresses</h3>
+    <div id="bot-addrs"></div>
+  </div>
+
+<script>
+const API_URL = 'https://mann.cool/api/clickstr-v2';
+let currentRange = '24h';
+let refreshInterval = null;
+let charts = {};
+
+// Chart.js defaults
+Chart.defaults.color = '#888899';
+Chart.defaults.borderColor = '#2a2a3a';
+Chart.defaults.font.family = "'SF Mono', 'Fira Code', monospace";
+Chart.defaults.font.size = 10;
+
+// ============================================================================
+// DATA FETCHING
+// ============================================================================
+
+async function fetchDashboard(range) {
+  const res = await fetch(`${API_URL}?dashboard=true&range=${range}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ============================================================================
+// RENDER
+// ============================================================================
+
+function formatNum(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M';
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+  return n.toLocaleString();
+}
+
+function formatWei(weiStr) {
+  try {
+    const wei = BigInt(weiStr || '0');
+    const eth = Number(wei) / 1e18;
+    return formatNum(Math.round(eth));
+  } catch { return '0'; }
+}
+
+function shortAddr(addr) {
+  return addr ? addr.slice(0, 6) + '...' + addr.slice(-4) : '?';
+}
+
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  if (diff < 60000) return Math.floor(diff / 1000) + 's ago';
+  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+  return Math.floor(diff / 86400000) + 'd ago';
+}
+
+function renderCards(state) {
+  const cardsEl = document.getElementById('cards');
+  cardsEl.innerHTML = `
+    <div class="card green">
+      <div class="label">Active Users</div>
+      <div class="value">${state.activeUsers}</div>
+      <div class="sub">${state.uniqueClickers} unique this epoch</div>
+    </div>
+    <div class="card blue">
+      <div class="label">Epoch Progress</div>
+      <div class="value">${state.epochProgress}%</div>
+      <div class="sub">${formatNum(state.epochClicks)} / ${formatNum(state.targetClicksPerEpoch)}</div>
+    </div>
+    <div class="card purple">
+      <div class="label">Difficulty</div>
+      <div class="value">${state.difficultyRatio}x</div>
+      <div class="sub">vs default starting difficulty</div>
+    </div>
+    <div class="card yellow">
+      <div class="label">Clicks/min</div>
+      <div class="value">${formatNum(state.clicksPerMin)}</div>
+      <div class="sub">rolling 60s window</div>
+    </div>
+    <div class="card green">
+      <div class="label">$CLICK Earned</div>
+      <div class="value">${formatWei(state.globalEarnedWei)}</div>
+      <div class="sub">total claimed attestations</div>
+    </div>
+    <div class="card red">
+      <div class="label">Bot Clicks</div>
+      <div class="value">${state.botPercentage}%</div>
+      <div class="sub">${formatNum(state.botClicks)} of ${formatNum(state.globalClicks)}</div>
+    </div>
+    <div class="card blue">
+      <div class="label">Human Clicks</div>
+      <div class="value">${formatNum(state.humanClicks)}</div>
+      <div class="sub">global (excl. bots)</div>
+    </div>
+    <div class="card">
+      <div class="label">Season / Epoch</div>
+      <div class="value">S${state.season} E${state.epoch}</div>
+      <div class="sub">${state.totalEpochs} epochs, ${state.epochDuration / 3600}h each</div>
+    </div>
+  `;
+}
+
+function renderEpochs(epochs, seasonNum) {
+  document.getElementById('season-num').textContent = seasonNum;
+  const tbody = document.getElementById('epoch-tbody');
+  tbody.innerHTML = epochs.map(ep => {
+    const pct = ep.targetClicks > 0 ? ((ep.totalClicks / ep.targetClicks) * 100).toFixed(1) : '0';
+    return `<tr>
+      <td>${ep.epoch}</td>
+      <td class="status-${ep.status}">${ep.status}</td>
+      <td>${formatNum(ep.totalClicks)}</td>
+      <td>${formatNum(ep.targetClicks)}</td>
+      <td>${pct}%</td>
+      <td>${ep.uniquePlayers}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderClaimEvents(claims) {
+  const el = document.getElementById('claim-events');
+  if (!claims || claims.length === 0) {
+    el.innerHTML = '<span style="color:#888">No claims recorded yet (tracking starts on deploy)</span>';
+    return;
+  }
+  // Show most recent first, limit 20
+  const recent = claims.slice(-20).reverse();
+  el.innerHTML = recent.map(c => `
+    <div class="event-row">
+      <span class="time">${timeAgo(c.ts)}</span>
+      <span class="addr">${shortAddr(c.address)}</span>
+      <span class="clicks">${formatNum(c.clicks)} clicks</span>
+      <span>epoch ${c.epoch}</span>
+      ${c.incremental ? '<span style="color:var(--yellow)">incremental</span>' : ''}
+    </div>
+  `).join('');
+}
+
+function renderDiffEvents(events) {
+  const el = document.getElementById('diff-events');
+  if (!events || events.length === 0) {
+    el.innerHTML = '<span style="color:#888">No difficulty changes recorded yet</span>';
+    return;
+  }
+  const recent = events.slice(-20).reverse();
+  const defaultDiff = BigInt('0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
+  el.innerHTML = recent.map(e => {
+    const oldRatio = Number(defaultDiff / BigInt(e.oldDifficulty)).toFixed(1);
+    const newRatio = Number(defaultDiff / BigInt(e.newDifficulty)).toFixed(1);
+    return `
+    <div class="event-row">
+      <span class="time">${timeAgo(e.ts)}</span>
+      <span>epoch ${e.epoch}</span>
+      <span>${formatNum(e.epochClicks)} clicks (target: ${formatNum(e.targetClicks)})</span>
+      <span style="color:var(--purple)">${oldRatio}x -> ${newRatio}x</span>
+    </div>`;
+  }).join('');
+}
+
+function renderBots(bots) {
+  const el = document.getElementById('bot-addrs');
+  if (!bots || bots.length === 0) {
+    el.innerHTML = '<span style="color:#888">None flagged</span>';
+    return;
+  }
+  el.innerHTML = bots.map(addr => `<div class="bot-addr">${addr}</div>`).join('');
+}
+
+// ============================================================================
+// CHARTS
+// ============================================================================
+
+const chartOpts = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: { duration: 300 },
+  plugins: { legend: { display: false } },
+  scales: {
+    x: {
+      type: 'time',
+      time: { tooltipFormat: 'MMM d, HH:mm' },
+      grid: { color: '#1a1a25' },
+    },
+    y: { grid: { color: '#1a1a25' }, beginAtZero: true },
+  },
+};
+
+function makeChart(canvasId, label, color, data, yConfig) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if (charts[canvasId]) charts[canvasId].destroy();
+  const opts = JSON.parse(JSON.stringify(chartOpts));
+  if (yConfig) Object.assign(opts.scales.y, yConfig);
+  charts[canvasId] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      datasets: Array.isArray(label) ? label.map((l, i) => ({
+        label: l,
+        data: data[i],
+        borderColor: Array.isArray(color) ? color[i] : color,
+        backgroundColor: (Array.isArray(color) ? color[i] : color) + '20',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 1.5,
+      })) : [{
+        label,
+        data,
+        borderColor: color,
+        backgroundColor: color + '20',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 1.5,
+      }],
+    },
+    options: opts,
+  });
+}
+
+function renderCharts(timeseries) {
+  if (!timeseries || timeseries.length === 0) return;
+
+  // Clicks over time (human vs bot cumulative per snapshot)
+  const clicksData = timeseries.map(s => ({ x: s.ts, y: s.epochClicks }));
+  const humanData = timeseries.map(s => ({ x: s.ts, y: s.humanClicks }));
+  const botData = timeseries.map(s => ({ x: s.ts, y: s.botClicks }));
+  makeChart('chart-clicks', ['Epoch Clicks', 'Human Total', 'Bot Total'],
+    ['#4488ff', '#00cc88', '#ff4466'],
+    [clicksData, humanData, botData]);
+
+  // Active users
+  const usersData = timeseries.map(s => ({ x: s.ts, y: s.activeUsers }));
+  makeChart('chart-users', 'Active Users', '#00cc88', usersData);
+
+  // Velocity
+  const velData = timeseries.map(s => ({ x: s.ts, y: s.clicksPerMin }));
+  makeChart('chart-velocity', 'Clicks/min', '#ffaa00', velData);
+
+  // Difficulty ratio
+  const defaultDiff = BigInt('0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
+  const diffData = timeseries.map(s => {
+    try {
+      const d = BigInt(s.difficulty);
+      return { x: s.ts, y: d > 0n ? Number(defaultDiff * 100n / d) / 100 : 1 };
+    } catch { return { x: s.ts, y: 1 }; }
+  });
+  makeChart('chart-difficulty', 'Difficulty (x harder)', '#aa66ff', diffData);
+
+  // Bot percentage over time
+  const botPctData = timeseries.map(s => {
+    const total = s.globalClicks || 1;
+    return { x: s.ts, y: ((s.botClicks || 0) / total * 100).toFixed(1) };
+  });
+  makeChart('chart-bots', 'Bot %', '#ff4466', botPctData, { max: 100, title: { display: true, text: '%' } });
+}
+
+// ============================================================================
+// MAIN LOOP
+// ============================================================================
+
+async function refresh() {
+  const statusEl = document.getElementById('status');
+  statusEl.textContent = 'Fetching...';
+  statusEl.className = 'status';
+
+  try {
+    const data = await fetchDashboard(currentRange);
+    if (!data.success) throw new Error('API returned error');
+
+    renderCards(data.currentState);
+    renderEpochs(data.epochs, data.currentState.season);
+    renderCharts(data.timeseries);
+    renderClaimEvents(data.claimHistory);
+    renderDiffEvents(data.difficultyHistory);
+    renderBots(data.currentState.flaggedBots);
+
+    const now = new Date();
+    statusEl.textContent = `Live - updated ${now.toLocaleTimeString()}`;
+    statusEl.className = 'status live';
+  } catch (err) {
+    console.error('Dashboard fetch error:', err);
+    statusEl.textContent = `Error: ${err.message}`;
+    statusEl.className = 'status';
+  }
+}
+
+// Range buttons
+document.querySelectorAll('.controls button[data-range]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.controls button[data-range]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentRange = btn.dataset.range;
+    refresh();
+  });
+});
+
+document.getElementById('refresh-btn').addEventListener('click', refresh);
+
+// Initial load + auto-refresh every 30s
+refresh();
+refreshInterval = setInterval(refresh, 30000);
+</script>
+</body>
+</html>
