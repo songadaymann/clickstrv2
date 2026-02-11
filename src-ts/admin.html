@@ -156,9 +156,10 @@
         <tr>
           <th>Epoch</th>
           <th>Status</th>
-          <th>Total Clicks</th>
+          <th>Raw Clicks</th>
+          <th>Attested</th>
           <th>Target</th>
-          <th>Progress</th>
+          <th>Attested %</th>
           <th>Players</th>
         </tr>
       </thead>
@@ -242,14 +243,19 @@ function renderCards(state) {
       <div class="sub">${state.uniqueClickers} unique this epoch</div>
     </div>
     <div class="card blue">
-      <div class="label">Epoch Progress</div>
-      <div class="value">${state.epochProgress}%</div>
-      <div class="sub">${formatNum(state.epochClicks)} / ${formatNum(state.targetClicksPerEpoch)}</div>
+      <div class="label">Raw Clicks (Epoch)</div>
+      <div class="value">${formatNum(state.epochClicks)}</div>
+      <div class="sub">${state.epochProgress}% of ${formatNum(state.targetClicksPerEpoch)} target</div>
+    </div>
+    <div class="card green">
+      <div class="label">Attested Clicks (Epoch)</div>
+      <div class="value">${formatNum(state.epochAttestedClicks || 0)}</div>
+      <div class="sub">${state.attestedProgress || '0'}% of target — drives difficulty</div>
     </div>
     <div class="card purple">
       <div class="label">Difficulty</div>
       <div class="value">${state.difficultyRatio}x</div>
-      <div class="sub">vs default starting difficulty</div>
+      <div class="sub">based on attested claims</div>
     </div>
     <div class="card yellow">
       <div class="label">Clicks/min</div>
@@ -283,13 +289,14 @@ function renderEpochs(epochs, seasonNum) {
   document.getElementById('season-num').textContent = seasonNum;
   const tbody = document.getElementById('epoch-tbody');
   tbody.innerHTML = epochs.map(ep => {
-    const pct = ep.targetClicks > 0 ? ((ep.totalClicks / ep.targetClicks) * 100).toFixed(1) : '0';
+    const attestedPct = ep.targetClicks > 0 ? ((ep.attestedClicks / ep.targetClicks) * 100).toFixed(1) : '0';
     return `<tr>
       <td>${ep.epoch}</td>
       <td class="status-${ep.status}">${ep.status}</td>
       <td>${formatNum(ep.totalClicks)}</td>
+      <td>${formatNum(ep.attestedClicks || 0)}</td>
       <td>${formatNum(ep.targetClicks)}</td>
-      <td>${pct}%</td>
+      <td>${attestedPct}%</td>
       <td>${ep.uniquePlayers}</td>
     </tr>`;
   }).join('');
@@ -325,11 +332,15 @@ function renderDiffEvents(events) {
   el.innerHTML = recent.map(e => {
     const oldRatio = Number(defaultDiff / BigInt(e.oldDifficulty)).toFixed(1);
     const newRatio = Number(defaultDiff / BigInt(e.newDifficulty)).toFixed(1);
+    const hasAttested = e.attestedClicks !== undefined;
+    const clicksLabel = hasAttested
+      ? `${formatNum(e.attestedClicks)} attested (${formatNum(e.rawClicks || e.epochClicks)} raw)`
+      : `${formatNum(e.epochClicks)} clicks`;
     return `
     <div class="event-row">
       <span class="time">${timeAgo(e.ts)}</span>
       <span>epoch ${e.epoch}</span>
-      <span>${formatNum(e.epochClicks)} clicks (target: ${formatNum(e.targetClicks)})</span>
+      <span>${clicksLabel} (target: ${formatNum(e.targetClicks)})</span>
       <span style="color:var(--purple)">${oldRatio}x -> ${newRatio}x</span>
     </div>`;
   }).join('');
