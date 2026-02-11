@@ -70,7 +70,7 @@ export {
 } from './contracts.ts';
 
 // Mining service
-export { startMining, terminateMining, isMining, preloadSha3 } from './mining.ts';
+export { startMining, terminateMining, isMining, preloadSha3, getMiningChallenge } from './mining.ts';
 
 // ENS service
 export {

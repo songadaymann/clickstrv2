@@ -52,6 +52,7 @@ export type {
   V2SubmitClicksResponse,
   V2GameState,
   V2StatsResponse,
+  MiningChallengeResponse,
 } from './api.ts';
 
 // Effects types

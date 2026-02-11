@@ -25,7 +25,16 @@ interface StartMessage {
   epoch: number;
   chainId: number;
   difficulty: string; // BigInt as string
+  challenge?: string; // Server-issued mining challenge (hex string, 32 chars)
 }
+
+/** Update challenge without restarting mining */
+interface UpdateChallengeMessage {
+  type: 'UPDATE_CHALLENGE';
+  challenge: string;
+}
+
+type IncomingMessage = StartMessage | UpdateChallengeMessage;
 
 /** Message types to main thread */
 interface FoundMessage {
@@ -39,12 +48,14 @@ let currentEpoch: number;
 let chainId: number;
 let difficultyTarget: bigint;
 let nonce: bigint;
+let currentChallenge: string | null = null;
 
 /**
  * Pack data for hashing (matches Solidity encoding)
- * Format: address (20 bytes) + nonce (32 bytes) + epoch (32 bytes) + chainId (32 bytes)
+ * Without challenge: address (20 bytes) + nonce (32 bytes) + epoch (32 bytes) + chainId (32 bytes) = 116 bytes
+ * With challenge:    + challenge (32 bytes) = 148 bytes
  */
-function packData(address: string, nonceVal: bigint, epoch: number, chain: number): Uint8Array {
+function packData(address: string, nonceVal: bigint, epoch: number, chain: number, challenge: string | null): Uint8Array {
   // Address bytes (20)
   const addrBytes = new Uint8Array(20);
   const addrHex = address.slice(2);
@@ -76,7 +87,24 @@ function packData(address: string, nonceVal: bigint, epoch: number, chain: numbe
     c = c >> 8n;
   }
 
-  // Concatenate all (116 bytes total)
+  if (challenge) {
+    // Challenge bytes (32) - hex string padded to 32 bytes (right-padded with zeros)
+    const challengeBytes = new Uint8Array(32);
+    const challengeHex = challenge.replace(/^0x/, '').padEnd(64, '0');
+    for (let i = 0; i < 32; i++) {
+      challengeBytes[i] = parseInt(challengeHex.substr(i * 2, 2), 16);
+    }
+
+    const packed = new Uint8Array(148);
+    packed.set(addrBytes, 0);
+    packed.set(nonceBytes, 20);
+    packed.set(epochBytes, 52);
+    packed.set(chainBytes, 84);
+    packed.set(challengeBytes, 116);
+    return packed;
+  }
+
+  // No challenge: 116 bytes (backwards compatible)
   const packed = new Uint8Array(116);
   packed.set(addrBytes, 0);
   packed.set(nonceBytes, 20);
@@ -103,7 +131,7 @@ function hashToBigInt(hash: number[]): bigint {
  */
 function mineOne(): void {
   for (let i = 0; i < 1000; i++) {
-    const packed = packData(userAddress, nonce, currentEpoch, chainId);
+    const packed = packData(userAddress, nonce, currentEpoch, chainId, currentChallenge);
     const hash = keccak256.array(packed);
 
     if (hashToBigInt(hash) < difficultyTarget) {
@@ -126,18 +154,22 @@ function mineOne(): void {
 /**
  * Handle messages from main thread
  */
-self.onmessage = function(e: MessageEvent<StartMessage>) {
+self.onmessage = function(e: MessageEvent<IncomingMessage>) {
   if (e.data.type === 'START') {
     userAddress = e.data.address;
     currentEpoch = e.data.epoch;
     chainId = e.data.chainId;
     difficultyTarget = BigInt(e.data.difficulty);
+    currentChallenge = e.data.challenge || null;
 
     // Start with random nonce
     nonce = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
 
     // Start mining
     mineOne();
+  } else if (e.data.type === 'UPDATE_CHALLENGE') {
+    // Update challenge mid-mining without restarting
+    currentChallenge = e.data.challenge;
   }
 };
 

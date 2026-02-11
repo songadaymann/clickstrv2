@@ -193,6 +193,16 @@ export interface V2SubmitClicksResponse {
   error?: string;
 }
 
+/** Mining challenge response from server */
+export interface MiningChallengeResponse {
+  success: boolean;
+  challenge?: string;
+  issuedAt?: number;
+  expiresAt?: number;
+  ttlSeconds?: number;
+  error?: string;
+}
+
 /** V2 game state from API */
 export interface V2GameState {
   currentEpoch: number;

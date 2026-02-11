@@ -50,6 +50,7 @@ import {
   submitClicksV2,
   fetchV2Stats,
   preloadSha3,
+  getMiningChallenge,
   finalizeElapsedEpochs,
   getUnfinalizedEpochCount,
 } from './services/index.ts';
@@ -1011,7 +1012,7 @@ function pressDown(): void {
 
     isMiningClick = true;
     console.log('[Button] Starting mining...');
-    startMining(onClickMined);
+    void startMining(onClickMined);
 
     // Safety timeout: if mining takes more than 10 seconds, something is wrong
     miningTimeout = setTimeout(() => {
@@ -1361,11 +1362,12 @@ async function handleOffChainSubmit(nonces: readonly bigint[]): Promise<void> {
  * Handle V2 submission (off-chain to API, claim rewards later)
  */
 async function handleV2Submit(nonces: readonly bigint[]): Promise<void> {
-  // Submit to V2 API
+  // Submit to V2 API (include mining challenge for server-side PoW verification)
   const result = await submitClicksV2(
     gameState.userAddress!,
     nonces.map(n => n.toString()),
-    turnstileToken
+    turnstileToken,
+    getMiningChallenge()
   );
 
   if (result.success) {
@@ -1449,7 +1451,8 @@ async function maybeAutoSubmit(): Promise<void> {
     const result = await submitClicksV2(
       gameState.userAddress,
       nonces.map(n => n.toString()),
-      turnstileToken
+      turnstileToken,
+      getMiningChallenge()
     );
 
     if (result.success) {
@@ -1527,7 +1530,8 @@ async function handleV2Claim(e: Event): Promise<void> {
     const submitResult = await submitClicksV2(
       gameState.userAddress!,
       nonces.map(n => n.toString()),
-      turnstileToken
+      turnstileToken,
+      getMiningChallenge()
     );
 
     if (!submitResult.success) {

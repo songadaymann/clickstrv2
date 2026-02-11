@@ -248,11 +248,52 @@ Fix: switched difficulty adjustment from raw clicks to **attested clicks** — o
 
 **Current state after deploy:** Epoch 1 has 3.14M raw clicks but 0 attested (counter tracks going forward only). Difficulty is at minimum. Next epoch transition will see low attested clicks and keep difficulty low — exactly the desired behavior.
 
+## Admin Dashboard Full Addresses & All-Clickers Table (Feb 11, 2026)
+
+**Full ETH addresses in admin dashboard:**
+Replaced truncated `shortAddr()` display with full addresses in claim event entries so they can be copied directly.
+
+**All Clickers table:**
+Added a new "All Clickers" section at the bottom of `admin.html` — a sortable table showing every address that has clicked, their total API clicks, and total CLICKSTR earned. Data fetched from the alltime and earned leaderboard APIs (limit=9999). Columns are sortable (click header to toggle). Addresses are click-to-copy with toast notification. Added `.addr` CSS with `word-break: break-all` for address wrapping.
+
+**Files changed:**
+- `src-ts/admin.html` — full addresses, All Clickers section (CSS, HTML, JS)
+
+## Server-Issued Mining Challenges (Feb 11, 2026)
+
+Implemented the short-lived mining challenge system described in `docs/security.md` to structurally prevent offline PoW pre-computation. Bots could previously mine nonces offline since all hash inputs (address, epoch, chainId) were publicly known and long-lived. Now the server issues a random challenge token with a 30-second TTL that must be included in the PoW hash.
+
+**How it works:**
+1. Frontend requests a challenge before mining: `GET ?challenge=true&address=0x...`
+2. Server generates a random 16-byte hex token, stores it in Redis with 35s TTL
+3. Challenge is included as `bytes32` (right-padded zeros) in the packed hash: `keccak256(address || nonce || epoch || chainId || challenge)` — 148 bytes total (was 116)
+4. On click submission, server validates that the submitted challenge matches what it issued
+5. Challenge auto-refreshes 5 seconds before expiry via a timer; the active worker receives an `UPDATE_CHALLENGE` message (no restart needed, no mining progress lost)
+
+**Server changes (`mann-dot-cool/api/clickstr-v2.js`):**
+- Added config: `MINING_CHALLENGE_TTL_SECONDS = 30`, `MINING_CHALLENGE_RATE_LIMIT_MS = 500`
+- Added Redis keys: `clickstr:v2:mining-challenge:{addr}` (challenge storage), `clickstr:v2:mining-challenge-rate:{addr}` (rate limit)
+- New GET endpoint: `?challenge=true&address=0x...` — generates random 16-byte hex token, stores in Redis with 35s TTL, returns challenge + timestamps
+- Updated `verifyNonce()` to accept optional `challenge` param — encodes as `bytes32` via viem's `encodePacked`
+- Updated POST handler to extract `miningChallenge` from body, validate against Redis, pass to `verifyNonce()`
+- **Grace period**: Server tries verification with challenge first, then falls back to without-challenge (allows old clients during rollout). Marked with TODO for removal.
+
+**Frontend changes (`clickstrv2/src-ts/`):**
+- `types/api.ts`: Added `MiningChallengeResponse` interface
+- `types/index.ts`: Re-exported new type
+- `services/api.ts`: Added `fetchMiningChallenge(address)` function; updated `submitClicksV2()` to accept and send `miningChallenge` param
+- `services/mining.ts`: Major rewrite — added challenge state management (`currentMiningChallenge`, `challengeExpiresAt`, `challengeRefreshTimer`), `refreshChallenge()` with auto-scheduling, `getMiningChallenge()` exported getter, `startMining()` changed from sync to `async` (fetches challenge before creating worker). Both worker variants (inline sha3 for Safari, importScripts fallback) updated with challenge logic.
+- `services/index.ts`: Exported `getMiningChallenge`
+- `workers/miningWorker.ts`: Added `UPDATE_CHALLENGE` message handler, `currentChallenge` state, challenge encoding in `packData()`
+- `main.ts`: Imports `getMiningChallenge`, passes it to all 3 `submitClicksV2()` call sites (`handleV2Submit`, `maybeAutoSubmit`, `handleV2Claim`), `startMining()` call changed to `void startMining(onClickMined)` (now async)
+
+**Build:** TypeScript type-check and Vite production build both passed cleanly.
+
 ## Open Items
 - Test claims with NFT bonuses end-to-end.
 - Rotate the admin secret (was exposed in session context).
 - Clean up any incorrect Redis achievements from the pre-fix `syncAchievements` behavior.
-- Consider server-issued mining challenges (short-lived tokens included in PoW) to structurally prevent offline mining.
+- Remove mining challenge grace period on server after frontend rollout confirms all clients send challenges.
 - Bots can create new addresses to evade the flagged list — monitor for new suspicious patterns.
 - Monitor attested clicks accumulation as players claim — verify difficulty adjusts correctly at epoch boundaries.
 

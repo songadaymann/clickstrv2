@@ -4,6 +4,7 @@
 
 import { CONFIG } from '@/config/index.ts';
 import { gameState } from '@/state/index.ts';
+import { fetchMiningChallenge } from '@/services/api.ts';
 
 /** Worker found message */
 interface FoundMessage {
@@ -21,6 +22,95 @@ let onNonceFound: ((nonce: bigint) => void) | null = null;
 let sha3Source: string | null = null;
 
 const SHA3_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/js-sha3/0.9.2/sha3.min.js';
+
+// =============================================================================
+// MINING CHALLENGE STATE
+// Server-issued short-lived token included in PoW hash to prevent offline mining
+// =============================================================================
+
+/** Current active mining challenge */
+let currentMiningChallenge: string | null = null;
+
+/** Expiry timestamp of current challenge (ms) */
+let challengeExpiresAt: number = 0;
+
+/** Timer for auto-refreshing the challenge before it expires */
+let challengeRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** How many seconds before expiry to refresh (gives buffer for network latency) */
+const CHALLENGE_REFRESH_BUFFER_SECONDS = 5;
+
+/**
+ * Get the current mining challenge (for inclusion in submit requests)
+ */
+export function getMiningChallenge(): string | null {
+  return currentMiningChallenge;
+}
+
+/**
+ * Fetch a fresh mining challenge from the server and schedule auto-refresh.
+ * Returns the challenge string, or null if the fetch failed.
+ */
+async function refreshChallenge(): Promise<string | null> {
+  if (!gameState.userAddress) return null;
+
+  try {
+    const result = await fetchMiningChallenge(gameState.userAddress);
+    if (result.success && result.challenge) {
+      currentMiningChallenge = result.challenge;
+      challengeExpiresAt = result.expiresAt || (Date.now() + (result.ttlSeconds || 30) * 1000);
+      const ttlSec = Math.round((challengeExpiresAt - Date.now()) / 1000);
+      console.log(`[Mining] Challenge acquired: ${currentMiningChallenge.slice(0, 12)}... (TTL ${ttlSec}s)`);
+
+      // Send updated challenge to active worker (no restart needed)
+      if (miningWorker) {
+        miningWorker.postMessage({
+          type: 'UPDATE_CHALLENGE',
+          challenge: currentMiningChallenge,
+        });
+        console.log('[Mining] Challenge sent to active worker (hot-swap, no restart)');
+      }
+
+      // Schedule next refresh before expiry
+      scheduleRefresh();
+
+      return currentMiningChallenge;
+    }
+  } catch (error) {
+    console.error('[Mining] Challenge refresh failed:', error);
+  }
+  return null;
+}
+
+/**
+ * Schedule the next challenge refresh, timed to fire before the current one expires.
+ */
+function scheduleRefresh(): void {
+  if (challengeRefreshTimer) {
+    clearTimeout(challengeRefreshTimer);
+    challengeRefreshTimer = null;
+  }
+
+  const msUntilExpiry = challengeExpiresAt - Date.now();
+  const refreshIn = Math.max(1000, msUntilExpiry - (CHALLENGE_REFRESH_BUFFER_SECONDS * 1000));
+
+  challengeRefreshTimer = setTimeout(async () => {
+    // Only refresh if still mining
+    if (miningWorker) {
+      await refreshChallenge();
+    }
+  }, refreshIn);
+}
+
+/**
+ * Stop the challenge refresh timer
+ */
+function stopChallengeRefresh(): void {
+  if (challengeRefreshTimer) {
+    clearTimeout(challengeRefreshTimer);
+    challengeRefreshTimer = null;
+  }
+}
 
 /**
  * Preload the sha3 library source from CDN.
@@ -55,10 +145,10 @@ function createWorkerCode(): string {
     // Inlined sha3 library (preloaded from main thread)
     ${sha3Source}
 
-    let userAddress, currentEpoch, chainId, difficultyTarget;
+    let userAddress, currentEpoch, chainId, difficultyTarget, currentChallenge = null;
     let nonce = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
 
-    function packData(address, nonceVal, epoch, chain) {
+    function packData(address, nonceVal, epoch, chain, challenge) {
       const addrBytes = new Uint8Array(20);
       const addrHex = address.slice(2);
       for (let i = 0; i < 20; i++) addrBytes[i] = parseInt(addrHex.substr(i * 2, 2), 16);
@@ -74,6 +164,20 @@ function createWorkerCode(): string {
       const chainBytes = new Uint8Array(32);
       let c = BigInt(chain);
       for (let i = 31; i >= 0; i--) { chainBytes[i] = Number(c & 0xFFn); c = c >> 8n; }
+
+      if (challenge) {
+        const challengeBytes = new Uint8Array(32);
+        const challengeHex = challenge.replace(/^0x/, '').padEnd(64, '0');
+        for (let i = 0; i < 32; i++) challengeBytes[i] = parseInt(challengeHex.substr(i * 2, 2), 16);
+
+        const packed = new Uint8Array(148);
+        packed.set(addrBytes, 0);
+        packed.set(nonceBytes, 20);
+        packed.set(epochBytes, 52);
+        packed.set(chainBytes, 84);
+        packed.set(challengeBytes, 116);
+        return packed;
+      }
 
       const packed = new Uint8Array(116);
       packed.set(addrBytes, 0);
@@ -91,7 +195,7 @@ function createWorkerCode(): string {
 
     function mineOne() {
       for (let i = 0; i < 1000; i++) {
-        const packed = packData(userAddress, nonce, currentEpoch, chainId);
+        const packed = packData(userAddress, nonce, currentEpoch, chainId, currentChallenge);
         const hash = keccak256.array(packed);
         if (hashToBigInt(hash) < difficultyTarget) {
           self.postMessage({ type: 'FOUND', nonce: nonce.toString() });
@@ -108,7 +212,10 @@ function createWorkerCode(): string {
         currentEpoch = e.data.epoch;
         chainId = e.data.chainId;
         difficultyTarget = BigInt(e.data.difficulty);
+        currentChallenge = e.data.challenge || null;
         mineOne();
+      } else if (e.data.type === 'UPDATE_CHALLENGE') {
+        currentChallenge = e.data.challenge;
       }
     };
   `;
@@ -122,10 +229,10 @@ function createWorkerCodeWithImportScripts(): string {
   return `
     self.importScripts('${SHA3_CDN_URL}');
 
-    let userAddress, currentEpoch, chainId, difficultyTarget;
+    let userAddress, currentEpoch, chainId, difficultyTarget, currentChallenge = null;
     let nonce = BigInt(Math.floor(Math.random() * Number.MAX_SAFE_INTEGER));
 
-    function packData(address, nonceVal, epoch, chain) {
+    function packData(address, nonceVal, epoch, chain, challenge) {
       const addrBytes = new Uint8Array(20);
       const addrHex = address.slice(2);
       for (let i = 0; i < 20; i++) addrBytes[i] = parseInt(addrHex.substr(i * 2, 2), 16);
@@ -141,6 +248,20 @@ function createWorkerCodeWithImportScripts(): string {
       const chainBytes = new Uint8Array(32);
       let c = BigInt(chain);
       for (let i = 31; i >= 0; i--) { chainBytes[i] = Number(c & 0xFFn); c = c >> 8n; }
+
+      if (challenge) {
+        const challengeBytes = new Uint8Array(32);
+        const challengeHex = challenge.replace(/^0x/, '').padEnd(64, '0');
+        for (let i = 0; i < 32; i++) challengeBytes[i] = parseInt(challengeHex.substr(i * 2, 2), 16);
+
+        const packed = new Uint8Array(148);
+        packed.set(addrBytes, 0);
+        packed.set(nonceBytes, 20);
+        packed.set(epochBytes, 52);
+        packed.set(chainBytes, 84);
+        packed.set(challengeBytes, 116);
+        return packed;
+      }
 
       const packed = new Uint8Array(116);
       packed.set(addrBytes, 0);
@@ -158,7 +279,7 @@ function createWorkerCodeWithImportScripts(): string {
 
     function mineOne() {
       for (let i = 0; i < 1000; i++) {
-        const packed = packData(userAddress, nonce, currentEpoch, chainId);
+        const packed = packData(userAddress, nonce, currentEpoch, chainId, currentChallenge);
         const hash = keccak256.array(packed);
         if (hashToBigInt(hash) < difficultyTarget) {
           self.postMessage({ type: 'FOUND', nonce: nonce.toString() });
@@ -175,7 +296,10 @@ function createWorkerCodeWithImportScripts(): string {
         currentEpoch = e.data.epoch;
         chainId = e.data.chainId;
         difficultyTarget = BigInt(e.data.difficulty);
+        currentChallenge = e.data.challenge || null;
         mineOne();
+      } else if (e.data.type === 'UPDATE_CHALLENGE') {
+        currentChallenge = e.data.challenge;
       }
     };
   `;
@@ -187,10 +311,11 @@ const MAX_UINT256 = 2n ** 256n - 1n;
 const MAX_DIFFICULTY_TARGET = MAX_UINT256 / 1000n;
 
 /**
- * Start mining a single click
+ * Start mining a single click.
+ * Fetches a fresh server challenge before starting the worker.
  * @param onFound Callback when valid nonce is found
  */
-export function startMining(onFound: (nonce: bigint) => void): void {
+export async function startMining(onFound: (nonce: bigint) => void): Promise<void> {
   console.log('[Mining] startMining called');
 
   if (!gameState.isConnected || !gameState.userAddress) {
@@ -213,6 +338,12 @@ export function startMining(onFound: (nonce: bigint) => void): void {
     console.log('[Mining] Terminating existing worker');
     miningWorker.terminate();
     miningWorker = null;
+  }
+
+  // Fetch a fresh challenge if we don't have one or it's about to expire
+  const needsChallenge = !currentMiningChallenge || (challengeExpiresAt - Date.now() < CHALLENGE_REFRESH_BUFFER_SECONDS * 1000);
+  if (needsChallenge) {
+    await refreshChallenge();
   }
 
   onNonceFound = onFound;
@@ -261,18 +392,20 @@ export function startMining(onFound: (nonce: bigint) => void): void {
   const miningEpoch = isGameActive ? gameState.currentEpoch : 0;
   const miningDifficulty = isGameActive ? gameState.difficultyTarget : MAX_DIFFICULTY_TARGET;
 
-  // Start mining
+  // Start mining with challenge
+  console.log(`[Mining] Starting worker — challenge: ${currentMiningChallenge ? currentMiningChallenge.slice(0, 12) + '...' : 'NONE'}, epoch: ${miningEpoch}`);
   miningWorker.postMessage({
     type: 'START',
     address: gameState.userAddress,
     epoch: miningEpoch,
     chainId: CONFIG.chainId,
     difficulty: miningDifficulty.toString(),
+    challenge: currentMiningChallenge || undefined,
   });
 }
 
 /**
- * Terminate the mining worker
+ * Terminate the mining worker and stop challenge refresh
  */
 export function terminateMining(): void {
   if (miningWorker) {
@@ -280,6 +413,7 @@ export function terminateMining(): void {
     miningWorker = null;
   }
   onNonceFound = null;
+  stopChallengeRefresh();
 }
 
 /**

@@ -21,6 +21,7 @@ import type {
   V2ClaimableEpochsResponse,
   V2SubmitClicksResponse,
   V2StatsResponse,
+  MiningChallengeResponse,
 } from '@/types/index.ts';
 
 const CLAIM_SIGNATURE_URL = 'https://mann.cool/api/clickstr-claim-signature';
@@ -674,12 +675,34 @@ export async function fetchV2ClaimableEpochs(address: string): Promise<V2Claimab
 }
 
 /**
+ * Fetch a mining challenge from the server.
+ * The challenge is a short-lived token that must be included in the PoW hash
+ * to prove nonces were mined in real-time (prevents offline pre-computation).
+ */
+export async function fetchMiningChallenge(address: string): Promise<MiningChallengeResponse> {
+  try {
+    const response = await fetch(`${V2_CLAIM_URL}?challenge=true&address=${address}`);
+    if (!response.ok) {
+      if (response.status === 429) {
+        return { success: false, error: 'Rate limited' };
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return await response.json() as MiningChallengeResponse;
+  } catch (error) {
+    console.error('Mining challenge fetch error:', error);
+    return { success: false, error: 'Failed to fetch mining challenge' };
+  }
+}
+
+/**
  * Submit clicks to V2 API (off-chain with PoW validation)
  */
 export async function submitClicksV2(
   address: string,
   nonces: string[],
-  turnstileToken?: string | null
+  turnstileToken?: string | null,
+  miningChallenge?: string | null
 ): Promise<V2SubmitClicksResponse> {
   try {
     const body: Record<string, unknown> = {
@@ -689,6 +712,10 @@ export async function submitClicksV2(
 
     if (turnstileToken) {
       body.turnstileToken = turnstileToken;
+    }
+
+    if (miningChallenge) {
+      body.miningChallenge = miningChallenge;
     }
 
     // Sensitive data (address, nonces) intentionally not logged
