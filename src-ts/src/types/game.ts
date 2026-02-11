@@ -69,12 +69,24 @@ export interface PendingClick {
   minedAt: number;
 }
 
+/** A nonce paired with the mining challenge it was mined under */
+export interface MinedNonce {
+  nonce: bigint;
+  challenge: string | null;
+}
+
+/** Serialized MinedNonce for localStorage / API transport */
+export interface SerializedMinedNonce {
+  nonce: string; // BigInt as string
+  challenge: string | null;
+}
+
 /** Persisted state for localStorage recovery */
 export interface PersistedState {
   address: string;
   epoch: number;
   validClicks: number;
-  pendingNonces: string[]; // BigInt serialized as string
+  pendingNonces: string[] | SerializedMinedNonce[]; // backwards-compatible: bare strings (legacy) or nonce+challenge pairs
   serverClicksPending: number;
   savedAt: number;
 }

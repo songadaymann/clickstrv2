@@ -5,6 +5,7 @@
 import type {
   ConnectionState,
   MiningState,
+  MinedNonce,
   ServerStatsResponse,
   ClaimState,
 } from '@/types/index.ts';
@@ -50,7 +51,7 @@ export class GameState {
 
   // Click state
   private _validClicks = 0;
-  private _pendingNonces: bigint[] = [];
+  private _pendingNonces: MinedNonce[] = [];
   private _serverClicksPending = 0;
 
   // Stats
@@ -198,7 +199,7 @@ export class GameState {
     return this._validClicks;
   }
 
-  get pendingNonces(): readonly bigint[] {
+  get pendingNonces(): readonly MinedNonce[] {
     return this._pendingNonces;
   }
 
@@ -206,9 +207,9 @@ export class GameState {
     return this._serverClicksPending;
   }
 
-  /** Add a successfully mined click */
-  addClick(nonce: bigint): void {
-    this._pendingNonces.push(nonce);
+  /** Add a successfully mined click with its challenge */
+  addClick(nonce: bigint, challenge: string | null): void {
+    this._pendingNonces.push({ nonce, challenge });
     this._validClicks++;
     this._serverClicksPending++;
     this.emit('clicksChanged');
@@ -241,7 +242,15 @@ export class GameState {
     if (!saved) return false;
 
     this._validClicks = saved.validClicks;
-    this._pendingNonces = saved.pendingNonces.map(n => BigInt(n));
+    // Handle both legacy (bare string[]) and new (SerializedMinedNonce[]) formats
+    this._pendingNonces = saved.pendingNonces.map(n => {
+      if (typeof n === 'string') {
+        // Legacy format: bare nonce string, no challenge attached
+        return { nonce: BigInt(n), challenge: null };
+      }
+      // New format: { nonce: string, challenge: string | null }
+      return { nonce: BigInt(n.nonce), challenge: n.challenge };
+    });
     this._serverClicksPending = saved.serverClicksPending;
     this.emit('clicksChanged');
 

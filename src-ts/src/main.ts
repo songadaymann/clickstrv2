@@ -11,6 +11,9 @@ import './styles/main.css';
 // Import state
 import { gameState } from './state/index.ts';
 
+// Import types
+import type { MinedNonce } from './types/index.ts';
+
 // Import config
 import { CONFIG, hasNftContract, getCurrentGame, getAllGames, type GameConfig } from './config/index.ts';
 
@@ -50,7 +53,6 @@ import {
   submitClicksV2,
   fetchV2Stats,
   preloadSha3,
-  getMiningChallenge,
   finalizeElapsedEpochs,
   getUnfinalizedEpochCount,
 } from './services/index.ts';
@@ -1019,7 +1021,7 @@ function pressDown(): void {
       if (isMiningClick) {
         console.warn('[Mining] Timeout - resetting button state');
         terminateMining();
-        onClickMined(0n); // Reset UI without adding click
+        onClickMined(0n, null); // Reset UI without adding click
       }
     }, 10000);
   }
@@ -1041,7 +1043,7 @@ const MIN_DOWN_TIME_MS = 50;
 /** Timestamp when button was pressed down */
 let buttonDownTime = 0;
 
-function onClickMined(nonce: bigint): void {
+function onClickMined(nonce: bigint, challenge: string | null): void {
   console.log(`[Button] onClickMined called - nonce=${nonce}, isMiningClick=${isMiningClick}, isPressed=${isPressed}`);
 
   // Clear safety timeout
@@ -1064,7 +1066,7 @@ function onClickMined(nonce: bigint): void {
 
     // Only add valid clicks (nonce 0 indicates mining error)
     if (nonce !== 0n) {
-      gameState.addClick(nonce);
+      gameState.addClick(nonce, challenge);
       updateDisplays();
       updateSubmitButton();
 
@@ -1265,9 +1267,9 @@ async function handleSubmit(e: Event): Promise<void> {
   }
 }
 
-async function handleOnChainSubmit(nonces: readonly bigint[]): Promise<void> {
+async function handleOnChainSubmit(nonces: readonly MinedNonce[]): Promise<void> {
   // Submit to blockchain
-  const receipt = await submitClicks([...nonces]);
+  const receipt = await submitClicks(nonces.map(n => n.nonce));
   if (!receipt) return;
 
   // Record to server (with Turnstile token + PoW nonces)
@@ -1277,7 +1279,7 @@ async function handleOnChainSubmit(nonces: readonly bigint[]): Promise<void> {
       gameState.userAddress!,
       clicksToRecord,
       turnstileToken,
-      nonces.slice(0, clicksToRecord).map(n => n.toString()),
+      nonces.slice(0, clicksToRecord).map(n => n.nonce.toString()),
       gameState.currentEpoch
     );
     if (result.success) {
@@ -1317,13 +1319,13 @@ async function handleOnChainSubmit(nonces: readonly bigint[]): Promise<void> {
   }
 }
 
-async function handleOffChainSubmit(nonces: readonly bigint[]): Promise<void> {
+async function handleOffChainSubmit(nonces: readonly MinedNonce[]): Promise<void> {
   // Record to API with Turnstile token + PoW nonces (no blockchain submission)
   const result = await recordClicksToServer(
     gameState.userAddress!,
     nonces.length,
     turnstileToken,
-    nonces.map(n => n.toString())
+    nonces.map(n => n.nonce.toString())
   );
 
   if (result.success) {
@@ -1361,13 +1363,12 @@ async function handleOffChainSubmit(nonces: readonly bigint[]): Promise<void> {
 /**
  * Handle V2 submission (off-chain to API, claim rewards later)
  */
-async function handleV2Submit(nonces: readonly bigint[]): Promise<void> {
-  // Submit to V2 API (include mining challenge for server-side PoW verification)
+async function handleV2Submit(nonces: readonly MinedNonce[]): Promise<void> {
+  // Submit to V2 API — each nonce carries the challenge it was mined with
   const result = await submitClicksV2(
     gameState.userAddress!,
-    nonces.map(n => n.toString()),
+    nonces.map(n => ({ nonce: n.nonce.toString(), challenge: n.challenge })),
     turnstileToken,
-    getMiningChallenge()
   );
 
   if (result.success) {
@@ -1450,9 +1451,8 @@ async function maybeAutoSubmit(): Promise<void> {
 
     const result = await submitClicksV2(
       gameState.userAddress,
-      nonces.map(n => n.toString()),
+      nonces.map(n => ({ nonce: n.nonce.toString(), challenge: n.challenge })),
       turnstileToken,
-      getMiningChallenge()
     );
 
     if (result.success) {
@@ -1526,12 +1526,11 @@ async function handleV2Claim(e: Event): Promise<void> {
     removeClass(claimBtn, 'has-clicks');
     setText(claimBtn, 'Submitting...');
 
-    // Step 1: Submit clicks to V2 API
+    // Step 1: Submit clicks to V2 API — each nonce carries its own challenge
     const submitResult = await submitClicksV2(
       gameState.userAddress!,
-      nonces.map(n => n.toString()),
+      nonces.map(n => ({ nonce: n.nonce.toString(), challenge: n.challenge })),
       turnstileToken,
-      getMiningChallenge()
     );
 
     if (!submitResult.success) {

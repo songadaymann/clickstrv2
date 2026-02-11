@@ -10,13 +10,14 @@ import { fetchMiningChallenge } from '@/services/api.ts';
 interface FoundMessage {
   type: 'FOUND';
   nonce: string;
+  challenge: string | null;
 }
 
 /** Active mining worker instance */
 let miningWorker: Worker | null = null;
 
-/** Callback when a valid nonce is found */
-let onNonceFound: ((nonce: bigint) => void) | null = null;
+/** Callback when a valid nonce is found (nonce + the challenge it was mined with) */
+let onNonceFound: ((nonce: bigint, challenge: string | null) => void) | null = null;
 
 /** Cached sha3 library source (fetched from CDN in main thread) */
 let sha3Source: string | null = null;
@@ -198,7 +199,7 @@ function createWorkerCode(): string {
         const packed = packData(userAddress, nonce, currentEpoch, chainId, currentChallenge);
         const hash = keccak256.array(packed);
         if (hashToBigInt(hash) < difficultyTarget) {
-          self.postMessage({ type: 'FOUND', nonce: nonce.toString() });
+          self.postMessage({ type: 'FOUND', nonce: nonce.toString(), challenge: currentChallenge });
           return;
         }
         nonce++;
@@ -282,7 +283,7 @@ function createWorkerCodeWithImportScripts(): string {
         const packed = packData(userAddress, nonce, currentEpoch, chainId, currentChallenge);
         const hash = keccak256.array(packed);
         if (hashToBigInt(hash) < difficultyTarget) {
-          self.postMessage({ type: 'FOUND', nonce: nonce.toString() });
+          self.postMessage({ type: 'FOUND', nonce: nonce.toString(), challenge: currentChallenge });
           return;
         }
         nonce++;
@@ -313,14 +314,14 @@ const MAX_DIFFICULTY_TARGET = MAX_UINT256 / 1000n;
 /**
  * Start mining a single click.
  * Fetches a fresh server challenge before starting the worker.
- * @param onFound Callback when valid nonce is found
+ * @param onFound Callback when valid nonce is found (receives nonce + challenge it was mined with)
  */
-export async function startMining(onFound: (nonce: bigint) => void): Promise<void> {
+export async function startMining(onFound: (nonce: bigint, challenge: string | null) => void): Promise<void> {
   console.log('[Mining] startMining called');
 
   if (!gameState.isConnected || !gameState.userAddress) {
     console.error('[Mining] Cannot start: not connected');
-    onFound(0n); // Call callback to unstick button
+    onFound(0n, null); // Call callback to unstick button
     return;
   }
 
@@ -330,7 +331,7 @@ export async function startMining(onFound: (nonce: bigint) => void): Promise<voi
 
   if (isGameActive && gameState.difficultyTarget === 0n) {
     console.error('[Mining] Cannot start: difficulty is 0');
-    onFound(0n); // Call callback to unstick button
+    onFound(0n, null); // Call callback to unstick button
     return;
   }
 
@@ -357,7 +358,8 @@ export async function startMining(onFound: (nonce: bigint) => void): Promise<voi
   miningWorker.onmessage = (e: MessageEvent<FoundMessage>) => {
     if (e.data.type === 'FOUND') {
       const nonce = BigInt(e.data.nonce);
-      // Nonce found — hand off to callback
+      const challenge = e.data.challenge ?? null;
+      // Nonce found — hand off to callback with the challenge it was mined under
 
       // Save callback reference before terminateMining clears it
       const callback = onNonceFound;
@@ -366,7 +368,7 @@ export async function startMining(onFound: (nonce: bigint) => void): Promise<voi
       gameState.setMiningComplete();
 
       if (callback) {
-        callback(nonce);
+        callback(nonce, challenge);
       } else {
         console.warn('[Mining] No callback registered!');
       }
@@ -382,7 +384,7 @@ export async function startMining(onFound: (nonce: bigint) => void): Promise<voi
     // Call callback with a fallback nonce to unstick the UI
     // The nonce won't be valid but at least the button won't freeze
     if (callback) {
-      callback(BigInt(0));
+      callback(BigInt(0), null);
     }
   };
 

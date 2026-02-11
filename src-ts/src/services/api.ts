@@ -695,27 +695,30 @@ export async function fetchMiningChallenge(address: string): Promise<MiningChall
   }
 }
 
+/** Nonce paired with the challenge it was mined under */
+interface NonceChallengePayload {
+  nonce: string;
+  challenge: string | null;
+}
+
 /**
  * Submit clicks to V2 API (off-chain with PoW validation)
+ * Each nonce carries the challenge it was mined with, so the server can
+ * verify each one independently (prevents stale-challenge rejections).
  */
 export async function submitClicksV2(
   address: string,
-  nonces: string[],
+  nonces: NonceChallengePayload[],
   turnstileToken?: string | null,
-  miningChallenge?: string | null
 ): Promise<V2SubmitClicksResponse> {
   try {
     const body: Record<string, unknown> = {
       address,
-      nonces,
+      nonces, // array of { nonce: string, challenge: string | null }
     };
 
     if (turnstileToken) {
       body.turnstileToken = turnstileToken;
-    }
-
-    if (miningChallenge) {
-      body.miningChallenge = miningChallenge;
     }
 
     // Sensitive data (address, nonces) intentionally not logged

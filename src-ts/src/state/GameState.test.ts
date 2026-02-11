@@ -182,11 +182,14 @@ describe('GameState', () => {
     it('can add clicks', () => {
       gameState.setConnected('0x1234');
 
-      gameState.addClick(BigInt(123));
-      gameState.addClick(BigInt(456));
+      gameState.addClick(BigInt(123), 'challenge-a');
+      gameState.addClick(BigInt(456), 'challenge-a');
 
       expect(gameState.validClicks).toBe(2);
-      expect(gameState.pendingNonces).toEqual([BigInt(123), BigInt(456)]);
+      expect(gameState.pendingNonces).toEqual([
+        { nonce: BigInt(123), challenge: 'challenge-a' },
+        { nonce: BigInt(456), challenge: 'challenge-a' },
+      ]);
       expect(gameState.serverClicksPending).toBe(2);
     });
 
@@ -195,26 +198,26 @@ describe('GameState', () => {
       const listener = vi.fn();
       gameState.subscribe(listener);
 
-      gameState.addClick(BigInt(123));
+      gameState.addClick(BigInt(123), 'challenge-a');
 
       expect(listener).toHaveBeenCalledWith('clicksChanged');
     });
 
     it('can clear submitted clicks', () => {
       gameState.setConnected('0x1234');
-      gameState.addClick(BigInt(1));
-      gameState.addClick(BigInt(2));
-      gameState.addClick(BigInt(3));
+      gameState.addClick(BigInt(1), 'challenge-a');
+      gameState.addClick(BigInt(2), 'challenge-a');
+      gameState.addClick(BigInt(3), 'challenge-b');
 
       gameState.clearSubmittedClicks(2);
 
       expect(gameState.validClicks).toBe(1);
-      expect(gameState.pendingNonces).toEqual([BigInt(3)]);
+      expect(gameState.pendingNonces).toEqual([{ nonce: BigInt(3), challenge: 'challenge-b' }]);
     });
 
     it('clears storage when all clicks submitted', () => {
       gameState.setConnected('0x1234');
-      gameState.addClick(BigInt(1));
+      gameState.addClick(BigInt(1), 'challenge-a');
 
       gameState.clearSubmittedClicks(1);
 
@@ -223,8 +226,8 @@ describe('GameState', () => {
 
     it('can mark server clicks as recorded', () => {
       gameState.setConnected('0x1234');
-      gameState.addClick(BigInt(1));
-      gameState.addClick(BigInt(2));
+      gameState.addClick(BigInt(1), 'challenge-a');
+      gameState.addClick(BigInt(2), 'challenge-a');
 
       gameState.markServerClicksRecorded(1);
 
@@ -354,7 +357,7 @@ describe('GameState', () => {
     it('resets mining state but not clicks', () => {
       gameState.setConnected('0x1234');
       gameState.setMining();
-      gameState.addClick(BigInt(123));
+      gameState.addClick(BigInt(123), 'challenge-a');
 
       gameState.reset();
 

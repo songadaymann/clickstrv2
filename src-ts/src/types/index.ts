@@ -13,6 +13,8 @@ export type {
   ConnectionState,
   WalletType,
   PendingClick,
+  MinedNonce,
+  SerializedMinedNonce,
   PersistedState,
 } from './game.ts';
 

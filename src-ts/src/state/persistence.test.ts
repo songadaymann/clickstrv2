@@ -191,23 +191,29 @@ describe('persistence', () => {
 
   describe('createPersistedState', () => {
     it('creates a valid persisted state object', () => {
-      const nonces = [BigInt(123), BigInt(456)];
+      const nonces = [
+        { nonce: BigInt(123), challenge: 'abc' },
+        { nonce: BigInt(456), challenge: 'def' },
+      ];
       const result = createPersistedState('0x1234', 5, 100, nonces, 50);
 
       expect(result.address).toBe('0x1234');
       expect(result.epoch).toBe(5);
       expect(result.validClicks).toBe(100);
-      expect(result.pendingNonces).toEqual(['123', '456']);
+      expect(result.pendingNonces).toEqual([
+        { nonce: '123', challenge: 'abc' },
+        { nonce: '456', challenge: 'def' },
+      ]);
       expect(result.serverClicksPending).toBe(50);
       expect(typeof result.savedAt).toBe('number');
       expect(result.savedAt).toBeLessThanOrEqual(Date.now());
     });
 
-    it('converts bigint nonces to strings', () => {
-      const nonces = [BigInt('99999999999999999999')];
+    it('converts bigint nonces to strings with challenge', () => {
+      const nonces = [{ nonce: BigInt('99999999999999999999'), challenge: 'test-challenge' }];
       const result = createPersistedState('0x1234', 1, 1, nonces, 0);
 
-      expect(result.pendingNonces).toEqual(['99999999999999999999']);
+      expect(result.pendingNonces).toEqual([{ nonce: '99999999999999999999', challenge: 'test-challenge' }]);
     });
 
     it('handles empty nonces array', () => {

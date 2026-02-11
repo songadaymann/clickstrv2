@@ -2,7 +2,7 @@
  * LocalStorage persistence for click recovery
  */
 
-import type { PersistedState } from '@/types/index.ts';
+import type { PersistedState, MinedNonce, SerializedMinedNonce } from '@/types/index.ts';
 
 const STORAGE_KEY = 'stupidClicker_pendingClicks';
 const CURSOR_STORAGE_KEY = 'stupidClicker_cursor';
@@ -95,14 +95,17 @@ export function createPersistedState(
   address: string,
   epoch: number,
   validClicks: number,
-  pendingNonces: bigint[],
+  pendingNonces: readonly MinedNonce[],
   serverClicksPending: number
 ): PersistedState {
   return {
     address,
     epoch,
     validClicks,
-    pendingNonces: pendingNonces.map(n => n.toString()),
+    pendingNonces: pendingNonces.map(n => ({
+      nonce: n.nonce.toString(),
+      challenge: n.challenge,
+    } as SerializedMinedNonce)),
     serverClicksPending,
     savedAt: Date.now(),
   };
