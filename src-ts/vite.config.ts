@@ -26,6 +26,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         bot: resolve(__dirname, 'bot.html'),
+        admin: resolve(__dirname, 'admin.html'),
       },
       output: {
         manualChunks: {
