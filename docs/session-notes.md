@@ -1,6 +1,6 @@
 # Clickstr V2 Session Notes (Consolidated)
 
-Last updated: 2026-02-10
+Last updated: 2026-02-11
 
 This is a trimmed, V2-only summary of progress. V1 content intentionally omitted.
 
@@ -193,20 +193,38 @@ Added click-to-copy address functionality to both the sidebar leaderboard (`.lea
 
 **External bot analysis:**
 - Community member published `clickstr-bot` on GitHub — offline PoW miner + localStorage injection.
-- Bot can inflate leaderboard (clicks accepted by server via real browser Turnstile) but cannot claim tokens (wallet signature + on-chain tx required).
-- Top 5 leaderboard positions are suspected bots. Next step: add manual bot flagging and a "Bots" tab to the leaderboard.
+- Bot can inflate leaderboard (clicks accepted by server via real browser Turnstile) and was able to claim tokens on-chain.
+- Attack vector: pass Turnstile once in real browser, then mine nonces offline and POST directly to API from same IP. Session is keyed by address + IP, not browser, so any process on the same machine can submit.
+
+## Bot Flagging, Rate Limiting & Hardening (Feb 10, 2026)
+
+**Server (`mann-dot-cool/api/clickstr-v2.js`):**
+- Added `FLAGGED_BOT_ADDRESSES` set with 5 known bot addresses. `isFlaggedBot()` helper.
+- All POST actions (clicks, claims, heartbeats) return 403 for flagged addresses.
+- Leaderboard endpoint filters bots from epoch/alltime/earned tabs; new `type=bots` shows only flagged addresses.
+- Bot data backfilled into alltime sorted set on bots tab request (reads `V2_TOTAL_CLICKS_KEY` per bot address).
+- Per-address rate limiting: 300 valid nonces per 60s sliding window (Redis counter with TTL). Configurable via `RATE_LIMIT_MAX_NONCES` env var. Partial batches accepted near limit; 429 when exhausted.
+- Removed `CLICKS_BEFORE_VERIFICATION` (500-click Turnstile re-verification cap) — caused UX friction for real players, ineffective against bots that pass Turnstile via real browser. Session expiry (1h) and IP binding remain.
+
+**Frontend (`clickstrv2`):**
+- Added 4th "Bots" toggle button to leaderboard panel.
+- `V2LeaderboardType` extended with `'bots'`.
+- Bot tab entries show robot emoji instead of milestone cursor icon.
+- Existing CSS applies automatically to the new button.
+
+**Flagged bot addresses:**
+- `0xd3a954764ee75f1df4142d853e70d2b7e5884d89`
+- `0xdad91ea7b6acf1cedf3f374dfb73ffc1a5ae75e5`
+- `0x74ac3770e1c8c1580ad04e98657da2975df6c689`
+- `0x736f54a30eb7ba91a0f3486bbd7cb1dea338b6da`
+- `0x455da13a80afe335f51bb4593421d81b8f86fc89`
 
 ## Open Items
-- **Bot flagging**: Add manual bot list to server API, filter bots from main leaderboard, add "Bots" tab to rankings modal. Flagged addresses:
-  - `0xd3a954764ee75f1df4142d853e70d2b7e5884d89`
-  - `0xdad91ea7b6acf1cedf3f374dfb73ffc1a5ae75e5`
-  - `0x74ac3770e1c8c1580ad04e98657da2975df6c689`
-  - `0x736f54a30eb7ba91a0f3486bbd7cb1dea338b6da`
-  - `0x455da13a80afe335f51bb4593421d81b8f86fc89`
 - Test claims with NFT bonuses end-to-end.
 - Rotate the admin secret (was exposed in session context).
 - Clean up any incorrect Redis achievements from the pre-fix `syncAchievements` behavior.
-- Consider mitigation for paid Turnstile solver services (rate limiting per address, anomaly detection).
+- Consider server-issued mining challenges (short-lived tokens included in PoW) to structurally prevent offline mining.
+- Bots can create new addresses to evade the flagged list — monitor for new suspicious patterns.
 
 ## Bot Penetration Test (Feb 8, 2026)
 
@@ -319,6 +337,38 @@ Redis global + individual counts reset via admin API (3 keys deleted). Difficult
 **Game window (expired):**
 - Start: 2026-02-07T11:04:12.000Z
 - End: 2026-02-07T12:04:12.000Z
+
+## Auto-Submit, Click Cap & Global Stats Improvements (Feb 11, 2026)
+
+**Problem:** A user accumulated 107K pending nonces without submitting. By the time they tried to claim, difficulty had changed and the server rejected all nonces with "No valid nonces" (400). Their clicks were lost.
+
+**Auto-submit (`maybeAutoSubmit`):**
+When `pendingNonces` reaches `maxBatchSize` (3000) and a Turnstile token is present, the frontend now automatically submits the batch to the server in the background. This is off-chain only (step 1 of the claim flow) — the on-chain token claim remains manual. The server response syncs the difficulty target, so subsequent nonces are mined at the correct difficulty. Achievements from the auto-submit are still processed.
+
+**Hard click cap:**
+If auto-submit can't fire (e.g. no Turnstile token yet), a hard cap stops mining at `maxBatchSize`. The main button dims to 40% opacity and stops responding to clicks. The claim button text changes to "Claim to keep clicking!" (or "Submit to keep clicking!" between games) and pulses. After submitting, clicking resumes normally. In practice most users never see this — auto-submit handles it silently.
+
+**Changes:**
+- `main.ts`: Added `isAutoSubmitting` flag, `maybeAutoSubmit()` function called from `onClickMined()`, hard cap check in `pressDown()`, button dimming and label change in `updateSubmitButton()`
+- `network.ts`: `maxBatchSize` = 3000 (increased from 500, enforced as a cap)
+
+**Bot click deduction from global stats (server):**
+The `?activeUsers=true` endpoint now subtracts flagged bot address clicks from `globalClicks`. Previously the "All-Time" counter in the game status panel included bot clicks. Server fetches each bot's `clickstr:v2:total:{address}` and subtracts the sum.
+
+**Global earned & All-Time toggle:**
+- Server: The `activeUsers` response now includes `globalEarned` (wei string) — sum of all scores in the earned leaderboard, excluding bots.
+- Frontend: The "All-Time" header in the game status panel is now clickable. Tapping toggles between "All-Time" (global click count) and "Earned" (global tokens earned with `$C` suffix). Added `formatWeiSplit()` utility for split value/suffix formatting of wei strings.
+- New type field: `globalEarned?: string` on `ActiveUsersResponse`
+
+**Files changed (frontend):**
+- `src-ts/src/main.ts` — auto-submit, hard cap, alltime toggle
+- `src-ts/index.html` — clickable alltime-toggle element
+- `src-ts/src/utils/formatting.ts` — `formatWeiSplit()`
+- `src-ts/src/utils/index.ts` — export `formatWeiSplit`
+- `src-ts/src/types/api.ts` — `globalEarned` field
+
+**Files changed (server @ mann.cool):**
+- `api/clickstr-v2.js` — bot deduction + globalEarned in activeUsers handler
 
 ## Previous Sepolia Deploy (Feb 6, 2026)
 

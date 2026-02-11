@@ -1,6 +1,6 @@
 # Clickstr V2 Security
 
-Last updated: 2026-02-08
+Last updated: 2026-02-10
 
 ## Trust Model
 V2 trades on-chain proof validation for off-chain validation with on-chain settlement. The server is trusted for:
@@ -121,6 +121,41 @@ Puppeteer + stealth plugin loads the live site, dismisses the welcome modal, inj
 - Headless browsers (even with stealth plugins) are detected at the challenge level.
 - **Remaining theoretical risk**: paid Turnstile solver services (CapSolver, 2Captcha) that use human farms or heavily patched browsers. Not tested.
 
+## Bot Flagging & Rate Limiting (Feb 10, 2026)
+
+Community member published an offline PoW miner that injects valid nonces directly via API calls, bypassing the browser UI entirely. The attack works because:
+
+1. User visits the site once, passes Turnstile (establishes a 1-hour session keyed by address + IP)
+2. Offline miner runs on the same machine, mining nonces against the public PoW algorithm
+3. Miner POSTs nonces to `/api/clickstr-v2` from the same IP — server sees a valid session and accepts them
+4. Bots were able to claim tokens on-chain (wallet signature + contract call)
+
+### [FIXED] Bot flagging and leaderboard filtering
+
+**Problem:** 5 addresses identified as bots were inflating leaderboards and claiming tokens.
+
+**Fix:**
+- Added `FLAGGED_BOT_ADDRESSES` set to server with 5 known bot addresses
+- Flagged addresses are blocked from all POST actions (clicks, claims, heartbeats) — returns 403
+- Filtered from epoch/alltime/earned leaderboard tabs
+- New `type=bots` leaderboard endpoint surfaces bot data in a dedicated "Bots" tab with backfill from Redis totals
+- Frontend: 4th "Bots" toggle button on leaderboard, robot emoji icon for bot entries
+
+### [FIXED] Per-address rate limiting
+
+**Problem:** No per-address throughput cap. An offline miner could submit thousands of nonces per minute via API, far exceeding human-plausible rates.
+
+**Fix:** Added a sliding-window rate limiter (Redis counter with TTL). Default: 300 valid nonces per 60-second window per address. Configurable via `RATE_LIMIT_MAX_NONCES` env var. Partial batches accepted when near the limit. Returns 429 with `retryAfterSeconds` when exhausted. A legitimate in-browser player (batches of 50-3000 on button click) will never hit this limit.
+
+### [REMOVED] Click-count re-verification cap
+
+The `CLICKS_BEFORE_VERIFICATION` (500-click) cap forced Turnstile re-verification every 500 clicks. Removed because it caused UX friction for legitimate players without meaningfully stopping bots (they pass Turnstile via a real browser anyway). Session expiry (1 hour) and IP binding remain as re-verification triggers.
+
+### Remaining risks
+- Bots can create new addresses to evade the flagged list
+- Rate limit of 300/min is tunable but bots can adapt to stay just under it
+- Server-issued mining challenges (short-lived tokens that must be included in PoW) would structurally prevent offline mining but require more significant architectural changes
+
 ## Operational Checklist
 - Do not store the attestation private key in frontend or build-time envs.
 - Disable secrets on preview deployments.
@@ -130,5 +165,7 @@ Puppeteer + stealth plugin loads the live site, dismisses the welcome modal, inj
 - [x] Sanitize all user-supplied data before HTML rendering (escapeHtml).
 - [x] Remove sensitive console.log statements from production code.
 - [x] Validate API-returned contract address against local config.
+- [x] Bot flagging and leaderboard filtering deployed.
+- [x] Per-address rate limiting deployed.
 - [ ] Rotate admin secret (was exposed in session context).
 - [ ] Deploy new contract with all security fixes before mainnet.

@@ -111,8 +111,8 @@
             <div class="game-status-label">Epoch</div>
             <div class="game-status-value" id="epoch-info">- / -</div>
           </div>
-          <div class="game-status-item">
-            <div class="game-status-label">All-Time</div>
+          <div class="game-status-item" id="alltime-toggle" style="cursor: pointer;">
+            <div class="game-status-label" id="alltime-label">All-Time</div>
             <div class="game-status-value"><span id="header-alltime-clicks">0</span><span class="info-suffix" id="header-alltime-suffix"></span></div>
           </div>
         </div>
@@ -172,12 +172,12 @@
     <div id="submit-container">
       <button id="submit-btn" disabled>Submit (0)</button>
       <div class="submit-help">
-        <span>Batch 50-500 clicks per tx</span>
+        <span>Batch 50-3000 clicks per tx</span>
         <div class="submit-help-icon">
           ?
           <div class="submit-help-tooltip">
             Min: 50 clicks per transaction<br>
-            Max: 500 clicks per transaction<br>
+            Max: 3000 clicks per transaction<br>
             Gas is paid on submit
           </div>
         </div>

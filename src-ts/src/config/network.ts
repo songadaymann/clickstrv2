@@ -53,7 +53,7 @@ export function buildConfig(networkId: NetworkId = CURRENT_NETWORK): AppConfig {
   return {
     ...network,
     minBatchSize: 50,
-    maxBatchSize: 500,
+    maxBatchSize: 3000,
     walletConnectProjectId: import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID || '',
     apiUrl,
     subgraphUrl: networkId === 'mainnet'
