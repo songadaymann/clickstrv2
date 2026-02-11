@@ -1,6 +1,6 @@
 # Clickstr V2 Security
 
-Last updated: 2026-02-10
+Last updated: 2026-02-11
 
 ## Trust Model
 V2 trades on-chain proof validation for off-chain validation with on-chain settlement. The server is trusted for:
@@ -154,7 +154,79 @@ The `CLICKS_BEFORE_VERIFICATION` (500-click) cap forced Turnstile re-verificatio
 ### Remaining risks
 - Bots can create new addresses to evade the flagged list
 - Rate limit of 300/min is tunable but bots can adapt to stay just under it
-- Server-issued mining challenges (short-lived tokens that must be included in PoW) would structurally prevent offline mining but require more significant architectural changes
+
+## Server-Issued Mining Challenges (Feb 11, 2026)
+
+Structurally prevents offline PoW pre-computation. Previously, all hash inputs (address, epoch, chainId) were publicly known and long-lived, so a bot could mine millions of nonces offline and batch-submit them. Now the server issues a random challenge token with a 30-second TTL that must be included in the PoW hash.
+
+### How it works
+
+1. Frontend requests a challenge: `GET ?challenge=true&address=0x...`
+2. Server generates a random 16-byte hex token, stores in Redis with 35s TTL
+3. Challenge included as `bytes32` (right-padded zeros) in the packed hash: `keccak256(address || nonce || epoch || chainId || challenge)` (148 bytes, was 116)
+4. On click submission, server validates: challenge must be present, must match Redis, must not be expired
+5. Challenge auto-refreshes 5 seconds before expiry (hot-swapped to the active worker, no mining restart)
+
+### What it prevents
+
+- **Offline pre-computation**: Nonces mined without a challenge (or with an expired one) are rejected. Mining must happen in real-time within 30-second windows.
+- **Batch stockpiling**: A bot can no longer mine for hours and submit in bulk. Each batch must use a challenge that was issued within the last 30 seconds.
+
+### What it does NOT prevent
+
+- **Real-time bot mining**: A bot that fetches challenges and mines in 30-second windows can still operate. The challenge reduces the attack to "mine at the same speed as a legitimate client," which is the intended outcome.
+- **Multiple addresses**: Spinning up N wallets with N challenge streams. Each gets its own rate limit bucket.
+- **Browser-based bots**: A bot running inside a real browser with Turnstile can fetch challenges normally.
+
+### Grace period (REMOVED Feb 11, 2026)
+
+Initially deployed with a grace period that accepted nonces with or without a challenge (fallback for old clients). After confirming all clients send challenges via server-side logging, the grace period was removed. Submissions without a valid challenge now return 400.
+
+## Automated Bot Detection (Proposed)
+
+Scoring system to identify likely bot addresses based on behavioral signals, replacing the current manual flagging approach.
+
+### Detection signals and scoring
+
+| Signal | Points | Rationale |
+|--------|--------|-----------|
+| Sustained >300 clicks/min for 10+ min | +3 | Human max is ~180/min (3 clicks/sec). Consistently hitting rate limit ceiling indicates automation. |
+| Never appeared in active users list | +2 | No browser heartbeat means no real browser session. The address submits clicks via direct API calls. |
+| >50K clicks with 0 tokens earned | +2 | Mining without claiming suggests automated farming or testing. Legitimate players claim periodically. |
+| No gap >5 min in a 6+ hour window | +1 | Humans take breaks, check phones, eat. Bots submit continuously. |
+| Shares IP with a flagged bot address | +1 | Bot operators often run multiple addresses from the same machine. |
+| Submission intervals have <5% variance | +1 | Bots submit on a timer with near-zero jitter. Humans are bursty and irregular. |
+
+### Actions by score
+
+| Score | Action |
+|-------|--------|
+| >= 5 | **Auto-flag**: address blocked immediately (403 on all POSTs), moved to Bots tab. Logged to admin dashboard. |
+| 3-4 | **Suspicious**: highlighted in admin dashboard with score breakdown. Not blocked until manual review. |
+| 1-2 | **Low risk**: no action, but score tracked and visible in admin dashboard. |
+
+### Implementation plan
+
+**Data collection (Redis):**
+- Per-address click timestamps: store last N submission times for interval variance calculation
+- Per-address session presence: track whether address has ever sent a heartbeat
+- Per-address continuous mining windows: track longest gap-free mining stretch
+- IP-to-address mapping: associate addresses with IPs seen during Turnstile sessions
+
+**Scoring runs:**
+- Trigger scoring on each click submission (lightweight: check 2-3 Redis keys)
+- Full scoring sweep via cron (every 5 min with dashboard snapshots): compute all signals for all active addresses
+
+**Admin dashboard integration:**
+- New "Suspicious" section showing addresses with score >= 3
+- Per-address detail view with signal breakdown
+- One-click flag/unflag from dashboard
+
+### Tuning considerations
+
+- Thresholds should be adjusted based on observed human behavior at different difficulty levels. At minimum difficulty, legitimate players mine faster.
+- The rate limit (currently 300/60s) acts as a natural ceiling. If lowered, the click velocity signal threshold should be adjusted accordingly.
+- New signals can be added over time (e.g., challenge fetch frequency, submission size patterns, time-of-day distribution).
 
 ## Operational Checklist
 - Do not store the attestation private key in frontend or build-time envs.
@@ -167,5 +239,9 @@ The `CLICKS_BEFORE_VERIFICATION` (500-click) cap forced Turnstile re-verificatio
 - [x] Validate API-returned contract address against local config.
 - [x] Bot flagging and leaderboard filtering deployed.
 - [x] Per-address rate limiting deployed.
+- [x] Server-issued mining challenges deployed (30s TTL, required for all submissions).
+- [x] Mining challenge grace period removed (no-challenge submissions rejected).
+- [x] Bot wave 3 flagged (0xc1e9...31cd, 230K clicks).
 - [ ] Rotate admin secret (was exposed in session context).
 - [ ] Deploy new contract with all security fixes before mainnet.
+- [ ] Implement automated bot detection scoring system (see proposal above).

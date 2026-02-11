@@ -276,7 +276,7 @@ Implemented the short-lived mining challenge system described in `docs/security.
 - New GET endpoint: `?challenge=true&address=0x...` — generates random 16-byte hex token, stores in Redis with 35s TTL, returns challenge + timestamps
 - Updated `verifyNonce()` to accept optional `challenge` param — encodes as `bytes32` via viem's `encodePacked`
 - Updated POST handler to extract `miningChallenge` from body, validate against Redis, pass to `verifyNonce()`
-- **Grace period**: Server tries verification with challenge first, then falls back to without-challenge (allows old clients during rollout). Marked with TODO for removal.
+- **Grace period**: Initially deployed with fallback to no-challenge verification. Removed after confirming all clients send challenges (see below).
 
 **Frontend changes (`clickstrv2/src-ts/`):**
 - `types/api.ts`: Added `MiningChallengeResponse` interface
@@ -289,11 +289,51 @@ Implemented the short-lived mining challenge system described in `docs/security.
 
 **Build:** TypeScript type-check and Vite production build both passed cleanly.
 
+## Challenge Rollout, Grace Period Removal & Bot Wave 3 (Feb 11, 2026)
+
+**Testing the mining challenge system:**
+Tested the challenge flow locally against the live `mann.cool` API using the grace period (server accepted both with-challenge and without-challenge nonces). Confirmed `validClicks: N, invalidClicks: 0` — all nonces passed server validation via the challenge path. Deployed frontend to production via git push to trigger Vercel auto-deploy.
+
+**Client-side challenge logging:**
+Added console logs to `mining.ts` so challenge lifecycle is visible in the browser:
+- `[Mining] Challenge acquired: <hash>... (TTL Ns)` — when a challenge is fetched
+- `[Mining] Starting worker — challenge: <hash>..., epoch: N` — when mining starts
+- `[Mining] Challenge sent to active worker (hot-swap, no restart)` — when challenge auto-refreshes
+
+**Server-side challenge logging:**
+Added `[Challenge]` log lines to the click submission handler:
+- `VALID challenge for <addr>.. (expires in Ns)` — challenge matched and not expired
+- `REJECTED — no challenge sent` / `mismatch` / `expired` — rejection reasons
+- `<addr>.. result: N/M valid` — nonce validation summary
+
+**Bot wave 3 flagged:**
+Identified and flagged `0xc1e9952ba846bf4ac408b39d05d18ce9623131cd` — 230K clicks (8x more than #2), not in active users list (no browser session), had already claimed ~8,783 CLICK on-chain. Added to `FLAGGED_BOT_ADDRESSES` on server. Now blocked from submitting and filtered from leaderboards.
+
+**Grace period removed:**
+After confirming all production clients send challenges (verified via browser console logs showing `challenge: <hash>` on every click), removed the server-side grace period. Submissions without a valid, unexpired challenge now return 400 with an error message telling users to refresh. The no-challenge fallback path in the nonce verification loop was also removed.
+
+**Admin dashboard in production build:**
+Added `admin.html` as a Vite build entry point in `vite.config.ts` so it deploys to `clickstr.fun/admin.html`.
+
+**Automated bot detection proposal:**
+Designed a scoring system for automated bot detection (documented in `docs/security.md`). Six behavioral signals (click velocity, session presence, earned ratio, mining gaps, IP correlation, submission variance) are scored and summed. Score >= 5 triggers auto-flag; 3-4 is surfaced for manual review. Not yet implemented.
+
+**Files changed (frontend):**
+- `src-ts/src/services/mining.ts` — challenge lifecycle logging
+- `src-ts/vite.config.ts` — admin.html entry point
+
+**Files changed (server @ mann.cool):**
+- `api/clickstr-v2.js` — bot wave 3 flag, challenge validation logging, grace period removal
+
+**Docs:**
+- `docs/security.md` — mining challenges section, automated bot detection proposal, updated checklist
+- `docs/session-notes.md` — this section
+
 ## Open Items
 - Test claims with NFT bonuses end-to-end.
 - Rotate the admin secret (was exposed in session context).
 - Clean up any incorrect Redis achievements from the pre-fix `syncAchievements` behavior.
-- Remove mining challenge grace period on server after frontend rollout confirms all clients send challenges.
+- Implement automated bot detection scoring system (see `docs/security.md`).
 - Bots can create new addresses to evade the flagged list — monitor for new suspicious patterns.
 - Monitor attested clicks accumulation as players claim — verify difficulty adjusts correctly at epoch boundaries.
 
