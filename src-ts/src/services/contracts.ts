@@ -130,9 +130,14 @@ export async function fetchDifficultyTarget(): Promise<bigint | null> {
  * Fetch reward calculation parameters from contract
  * V2 uses a flat per-epoch budget capped by pool reality:
  *   epochBudget = min(seasonPool / totalEpochs, poolRemaining / remainingEpochs)
- * Returns targetClicksPerEpoch and epochBudget for display calculations
+ * Returns both ideal and effective reward context for display calculations.
  */
-export async function fetchRewardParams(): Promise<{ targetClicksPerEpoch: bigint; epochBudget: bigint } | null> {
+export async function fetchRewardParams(): Promise<{
+  targetClicksPerEpoch: bigint;
+  epochBudget: bigint;
+  epochBudgetUsed: bigint;
+  epochClicks: bigint;
+} | null> {
   if (!gameContract) {
     console.error('[Contracts] Game contract not initialized');
     return null;
@@ -142,15 +147,22 @@ export async function fetchRewardParams(): Promise<{ targetClicksPerEpoch: bigin
   // Matches contract logic: min(seasonPool/TOTAL_EPOCHS, poolRemaining/remainingEpochs)
   if (IS_V2) {
     try {
-      const [pool, totalEpochs, epochDuration, poolRemainingRaw] = await Promise.all([
+      const currentEpoch = BigInt(gameState.currentEpoch || 1);
+      const [pool, totalEpochs, epochDuration, poolRemainingRaw, onChainBudgetRaw, onChainUsedRaw, epochClicksRaw] = await Promise.all([
         gameContract.seasonPool(),
         gameContract.TOTAL_EPOCHS(),
         gameContract.EPOCH_DURATION(),
         gameContract.poolRemaining(),
+        gameContract.epochEmissionBudget(currentEpoch),
+        gameContract.epochEmissionUsed(currentEpoch),
+        gameContract.totalClicksPerEpoch(currentEpoch),
       ]);
       const seasonPoolWei: bigint = BigInt(pool.toString());
       const epochsBig: bigint = BigInt(totalEpochs.toString());
       const poolRemainingWei: bigint = BigInt(poolRemainingRaw.toString());
+      const onChainBudget = BigInt(onChainBudgetRaw.toString());
+      const onChainUsed = BigInt(onChainUsedRaw.toString());
+      const epochClicks = BigInt(epochClicksRaw.toString());
       const epochDurationSec = Number(epochDuration.toString());
       const targetClicks = BigInt(Math.floor(1_000_000 * epochDurationSec / 86400));
 
@@ -159,23 +171,30 @@ export async function fetchRewardParams(): Promise<{ targetClicksPerEpoch: bigin
 
       // Fair budget based on remaining pool and remaining epochs
       // Clamp to >= 1 to avoid division by zero when game has ended or epoch > totalEpochs
-      const currentEpoch = BigInt(gameState.currentEpoch || 1);
       const rawRemaining = epochsBig - currentEpoch + 1n;
       const remainingEpochs = rawRemaining > 0n ? rawRemaining : 1n;
       const fairBudget = poolRemainingWei / remainingEpochs;
 
       // Use the lesser of the two (matches contract)
-      const epochBudget = flatBudget < fairBudget ? flatBudget : fairBudget;
+      const computedBudget = flatBudget < fairBudget ? flatBudget : fairBudget;
+
+      // Prefer the on-chain stored budget once claims started for this epoch.
+      // This keeps UI aligned with real contract state.
+      const epochBudget = onChainBudget > 0n ? onChainBudget : computedBudget;
 
       return {
         targetClicksPerEpoch: targetClicks,
         epochBudget,
+        epochBudgetUsed: onChainUsed,
+        epochClicks,
       };
     } catch {
       // Fallback
       return {
         targetClicksPerEpoch: BigInt(1_000_000),
         epochBudget: BigInt(0),
+        epochBudgetUsed: BigInt(0),
+        epochClicks: BigInt(0),
       };
     }
   }
@@ -192,6 +211,8 @@ export async function fetchRewardParams(): Promise<{ targetClicksPerEpoch: bigin
     return {
       targetClicksPerEpoch: targetClicks.toBigInt(),
       epochBudget: budget,
+      epochBudgetUsed: BigInt(0),
+      epochClicks: BigInt(0),
     };
   } catch (error) {
     console.error('[Contracts] Error fetching reward params:', error);

@@ -181,6 +181,8 @@ let leaderboardMode: V2LeaderboardType = 'epoch';
 let currentGame: GameConfig | undefined;
 let targetClicksPerEpoch: bigint = 0n;
 let epochBudget: bigint = 0n;
+let epochBudgetUsed: bigint = 0n;
+let epochClaimedClicks: bigint = 0n;
 let v2ClaimableEpochs: V2ClaimableEpoch[] = [];
 let v2IsClaimingInProgress = false;
 let deferMintModal = false; // true while claim flow is in progress, prevents mint modal from interrupting wallet prompts
@@ -1078,6 +1080,15 @@ function onClickMined(nonce: bigint, challenge: string | null): void {
 
 // ============ Connection ============
 
+async function refreshRewardDisplayParams(): Promise<void> {
+  const rewardParams = await fetchRewardParams();
+  if (!rewardParams) return;
+  targetClicksPerEpoch = rewardParams.targetClicksPerEpoch;
+  epochBudget = rewardParams.epochBudget;
+  epochBudgetUsed = rewardParams.epochBudgetUsed;
+  epochClaimedClicks = rewardParams.epochClicks;
+}
+
 async function onConnected(): Promise<void> {
   initializeContracts();
 
@@ -1085,12 +1096,8 @@ async function onConnected(): Promise<void> {
   // This sets poolRemaining, epoch info, and game active status
   await refreshGameData();
 
-  // Fetch reward params (for difficulty display)
-  const rewardParams = await fetchRewardParams();
-  if (rewardParams) {
-    targetClicksPerEpoch = rewardParams.targetClicksPerEpoch;
-    epochBudget = rewardParams.epochBudget;
-  }
+  // Fetch reward params (for reward/difficulty display)
+  await refreshRewardDisplayParams();
 
   // Update difficulty and reward display
   updateDifficultyDisplay();
@@ -1695,6 +1702,8 @@ async function handleV2Claim(e: Event): Promise<void> {
 
       // Refresh user stats from contract
       await refreshUserStats();
+      await refreshRewardDisplayParams();
+      updateDifficultyDisplay();
 
       // Refresh V2 stats
       const stats = await fetchV2Stats(gameState.userAddress!);
@@ -1948,6 +1957,7 @@ function updateDifficultyDisplay(): void {
   if (!gameState.isGameActive || gameState.difficultyTarget === 0n) {
     setText(difficultyDisplayEl, '--');
     setText(rewardPerClickEl, '--');
+    rewardPerClickEl.removeAttribute('title');
     return;
   }
 
@@ -1985,16 +1995,27 @@ function updateDifficultyDisplay(): void {
   }
   setText(difficultyDisplayEl, difficultyStr);
 
-  // Calculate estimated reward per click
-  // Formula: epochBudget / targetClicksPerEpoch / 2
-  // epochBudget = min(seasonPool/totalEpochs, poolRemaining/remainingEpochs)
-  // This gives gross reward per click, then we take half (player gets 50%)
+  // Calculate estimated reward per click using current epoch usage:
+  // - ideal per-click uses full epoch budget spread across target clicks
+  // - effective per-click uses remaining budget vs remaining target clicks
+  // This tracks real payout pressure as epochs fill up.
   if (targetClicksPerEpoch > 0n && epochBudget > 0n) {
-    const grossPerClick = epochBudget / targetClicksPerEpoch;
-    const playerPerClick = grossPerClick / 2n;
+    const used = epochBudgetUsed > epochBudget ? epochBudget : epochBudgetUsed;
+    const remainingBudget = epochBudget > used ? (epochBudget - used) : 0n;
+    const remainingTargetClicks = targetClicksPerEpoch > epochClaimedClicks
+      ? (targetClicksPerEpoch - epochClaimedClicks)
+      : 1n;
+
+    const idealGrossPerClick = epochBudget / targetClicksPerEpoch;
+    let effectiveGrossPerClick = remainingBudget / remainingTargetClicks;
+    if (effectiveGrossPerClick > idealGrossPerClick) {
+      effectiveGrossPerClick = idealGrossPerClick;
+    }
+    const effectivePlayerPerClick = effectiveGrossPerClick / 2n;
+    const idealPlayerPerClick = idealGrossPerClick / 2n;
 
     // Convert to tokens (18 decimals)
-    const rewardTokens = Number(playerPerClick) / 1e18;
+    const rewardTokens = Number(effectivePlayerPerClick) / 1e18;
 
     // Format nicely (no ~ since it doesn't render in segment font)
     let rewardStr: string;
@@ -2008,8 +2029,13 @@ function updateDifficultyDisplay(): void {
       rewardStr = rewardTokens.toFixed(4);
     }
     setText(rewardPerClickEl, rewardStr);
+    rewardPerClickEl.setAttribute(
+      'title',
+      `Effective ${Number(effectivePlayerPerClick) / 1e18} CLICK/click (ideal ${Number(idealPlayerPerClick) / 1e18})`
+    );
   } else {
     setText(rewardPerClickEl, '--');
+    rewardPerClickEl.removeAttribute('title');
   }
 }
 
@@ -2215,6 +2241,8 @@ function startPeriodicUpdates(): void {
     if (gameState.isConnected) {
       await refreshGameData();
       await refreshUserStats();
+      await refreshRewardDisplayParams();
+      updateDifficultyDisplay();
     }
   }, 30000);
 }
