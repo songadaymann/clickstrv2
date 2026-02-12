@@ -1361,6 +1361,34 @@ async function handleOffChainSubmit(nonces: readonly MinedNonce[]): Promise<void
 }
 
 /**
+ * Clear only server-accepted clicks from the local pending queue.
+ * V2 can partially accept a batch (rate limit / invalid / stale challenge),
+ * so clearing the full submitted batch can drop uncredited clicks.
+ */
+function applyV2SubmissionResult(
+  result: { validClicks?: number; invalidClicks?: number },
+  submittedCount: number
+): number {
+  const accepted = typeof result.validClicks === 'number'
+    ? Math.max(0, Math.min(submittedCount, result.validClicks))
+    : submittedCount;
+  const rejected = typeof result.invalidClicks === 'number'
+    ? Math.max(0, result.invalidClicks)
+    : Math.max(0, submittedCount - accepted);
+
+  if (accepted > 0) {
+    gameState.clearSubmittedClicks(accepted);
+  }
+
+  // Surface partial acceptance so users understand payout deltas.
+  if (rejected > 0) {
+    showAchievementToast('Partial Submit', `${accepted}/${submittedCount} clicks accepted`);
+  }
+
+  return accepted;
+}
+
+/**
  * Handle V2 submission (off-chain to API, claim rewards later)
  */
 async function handleV2Submit(nonces: readonly MinedNonce[]): Promise<void> {
@@ -1384,8 +1412,8 @@ async function handleV2Submit(nonces: readonly MinedNonce[]): Promise<void> {
       gameState.setDifficulty(BigInt(result.difficultyTarget));
     }
 
-    // Clear submitted clicks
-    gameState.clearSubmittedClicks(nonces.length);
+    // Clear only accepted clicks (V2 may partially accept a batch)
+    applyV2SubmissionResult(result, nonces.length);
 
     // Handle achievements from V2 response
     if (result.newMilestones && result.newMilestones.length > 0) {
@@ -1465,7 +1493,7 @@ async function maybeAutoSubmit(): Promise<void> {
         gameState.setDifficulty(BigInt(result.difficultyTarget));
       }
 
-      gameState.clearSubmittedClicks(nonces.length);
+      applyV2SubmissionResult(result, nonces.length);
       updateDisplays();
       updateSubmitButton();
 
@@ -1561,6 +1589,10 @@ async function handleV2Claim(e: Event): Promise<void> {
       gameState.setAllTimeClicks(submitResult.lifetimeClicks);
     }
 
+    // Clear accepted clicks immediately after server submit.
+    // If wallet signing/tx fails later, we should not re-submit already accepted nonces.
+    applyV2SubmissionResult(submitResult, nonces.length);
+
     // Defer mint modal during the claim flow so wallet prompts aren't interrupted
     deferMintModal = true;
     deferredClaimables = [];
@@ -1583,7 +1615,6 @@ async function handleV2Claim(e: Event): Promise<void> {
     // Between games: submit to server only, no on-chain claim
     if (!gameState.isGameActive) {
       console.log('[V2 Claim] Game inactive — clicks submitted, skipping on-chain claim');
-      gameState.clearSubmittedClicks(nonces.length);
       updateDisplays();
 
       setText(claimBtn, 'Submitted!');
@@ -1657,9 +1688,6 @@ async function handleV2Claim(e: Event): Promise<void> {
 
       // Play cash machine sound!
       playCashMachineSound();
-
-      // Clear submitted clicks
-      gameState.clearSubmittedClicks(nonces.length);
 
       // Update UI
       updateDisplays();
