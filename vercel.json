@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm --prefix src-ts ci && npm --prefix src-ts run build",
+  "buildCommand": "npm --prefix src-ts install && npm --prefix src-ts run build",
   "outputDirectory": "src-ts/dist",
   "framework": "vite"
 }
