@@ -1,0 +1,33 @@
+{
+  "version": "v2-base-season",
+  "network": "base",
+  "chainId": 8453,
+  "season": {
+    "number": 4,
+    "totalEpochs": 6,
+    "epochDuration": 14400,
+    "poolAmount": "100000000",
+    "seasonLengthHours": 24
+  },
+  "contracts": {
+    "clickToken": "0x43f8e5502c57e64659cee77a97aa23adae605b89",
+    "clickRegistry": "0xf724ede44Bbb2Ccf46cec530c21B14885D441e02",
+    "clickstrTreasury": "0xBBf23Ef49F9e6B74596C931E7A579d99ba401586",
+    "clickstrNFTV2": "0x37c4C8817a6F87e6a0984b5e8fd73c9F07f8f849",
+    "clickstrGameV2": "0x64AB5E65B752B881d384f9b4611DD06D01609094"
+  },
+  "signers": {
+    "attestation": "0xd4eEf240c88eA5Dc72de6fB7774065CEE22F7Afd"
+  },
+  "deployer": "0x73468BD5fDD81b6e0c583bB5bb38534684c8DFe0",
+  "deployedAt": "2026-02-13T22:23:57.571Z",
+  "gameStartTime": "2026-02-13T22:23:57.000Z",
+  "gameEndTime": "2026-02-14T22:23:57.000Z",
+  "transactions": {
+    "deploy": "0x55e865b09177777dc621992b9a940ddf493cae91ace86b0a7b049bbd24ebd7e6",
+    "authorizeRegistry": "0x245d77d2382f0c0e01e2eb4b08f38c26038ea288f6df27119c0512b3da00f5de",
+    "authorizeTreasury": "0x8bc2a2d03c31e58b2bd400488a5add4ce24490115491b1eaaf262a76dfa49654",
+    "startGame": "0x09b3524881f47614402529c808b0914f60e03f6fcee76a76e8bb54c1297df8d9"
+  },
+  "blockNumber": 42116045
+}

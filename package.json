@@ -7,7 +7,14 @@
     "test": "hardhat test",
     "deploy:v2": "hardhat run scripts/deploy-v2.js",
     "deploy:v2:season": "hardhat run scripts/deploy-v2-season.js",
-    "node": "hardhat node"
+    "deploy:base:registry-treasury": "hardhat run scripts/deploy-base-registry-treasury.js --network base",
+    "deploy:base:nft": "hardhat run scripts/deploy-base-nft.js --network base",
+    "deploy:base:season:24h": "hardhat run scripts/deploy-base-season-24h.js --network base",
+    "airdrop:base": "node scripts/airdrop-base-token.js",
+    "node": "hardhat node",
+    "antibot:smoke": "node scripts/antibot-smoke.js",
+    "snapshot:migration": "node scripts/snapshot-mainnet-migration.js",
+    "import:migration:base": "node scripts/import-base-migration.js"
   },
   "dependencies": {
     "js-sha3": "^0.9.2"

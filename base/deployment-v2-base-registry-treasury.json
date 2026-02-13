@@ -1,0 +1,13 @@
+{
+  "version": "v2-base-registry-treasury",
+  "network": "base",
+  "chainId": 8453,
+  "deployer": "0x73468BD5fDD81b6e0c583bB5bb38534684c8DFe0",
+  "deployedAt": "2026-02-13T18:26:01.850Z",
+  "contracts": {
+    "clickToken": "0x43f8e5502c57e64659cee77a97aa23adae605b89",
+    "clickRegistry": "0xf724ede44Bbb2Ccf46cec530c21B14885D441e02",
+    "clickstrTreasury": "0xBBf23Ef49F9e6B74596C931E7A579d99ba401586"
+  },
+  "blockNumber": 42108907
+}

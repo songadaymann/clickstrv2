@@ -1,0 +1,17 @@
+{
+  "version": "v2-base-nft",
+  "network": "base_nft",
+  "chainId": 8453,
+  "deployer": "0xf55E4fac663ad8db80284620F97D95391ab002EF",
+  "deployedAt": "2026-02-13T18:26:49.934Z",
+  "contracts": {
+    "clickRegistry": "0xf724ede44Bbb2Ccf46cec530c21B14885D441e02",
+    "clickstrNFTV2": "0x37c4C8817a6F87e6a0984b5e8fd73c9F07f8f849"
+  },
+  "signers": {
+    "nft": "0xf55E4fac663ad8db80284620F97D95391ab002EF"
+  },
+  "nftBaseURI": "ipfs://QmP7joVgJgoW3u6TFCpmxBBWLdrZSvpiioENPHRRbD3t9S/",
+  "blockNumber": 42108931
+}
+

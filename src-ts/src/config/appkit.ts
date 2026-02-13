@@ -4,13 +4,17 @@
 
 import { createAppKit } from '@reown/appkit';
 import { Ethers5Adapter } from '@reown/appkit-adapter-ethers5';
-import { sepolia, mainnet } from '@reown/appkit/networks';
+import { sepolia, mainnet, base } from '@reown/appkit/networks';
 import type { AppKitNetwork } from '@reown/appkit/networks';
 import { CONFIG, CURRENT_NETWORK } from './network.ts';
 
 // Select network based on current config
 const networks: [AppKitNetwork, ...AppKitNetwork[]] =
-  CURRENT_NETWORK === 'mainnet' ? [mainnet, sepolia] : [sepolia, mainnet];
+  CURRENT_NETWORK === 'base'
+    ? [base, mainnet, sepolia]
+    : CURRENT_NETWORK === 'mainnet'
+      ? [mainnet, base, sepolia]
+      : [sepolia, base, mainnet];
 
 // Metadata for the wallet modal
 const metadata = {
