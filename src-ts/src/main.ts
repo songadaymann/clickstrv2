@@ -53,6 +53,7 @@ import {
   submitClicksV2,
   fetchV2Stats,
   preloadSha3,
+  configureMiningAuth,
   finalizeElapsedEpochs,
   getUnfinalizedEpochCount,
 } from './services/index.ts';
@@ -247,6 +248,15 @@ async function init(): Promise<void> {
   // Preload sha3 library for mining workers (fetched in main thread to avoid
   // Safari's importScripts restriction on blob workers with opaque origins)
   preloadSha3();
+
+  configureMiningAuth({
+    getTurnstileToken: () => turnstileToken,
+    onVerificationRequired: () => {
+      if (!turnstileModal.classList.contains('visible')) {
+        showTurnstileModal();
+      }
+    },
+  });
 
   // Initialize effects
   initEffects();

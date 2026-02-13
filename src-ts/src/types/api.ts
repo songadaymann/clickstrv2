@@ -178,6 +178,14 @@ export interface V2SubmitClicksResponse {
   success: boolean;
   validClicks?: number;
   invalidClicks?: number;
+  rejectionReasons?: {
+    missingChallenge?: number;
+    invalidChallenge?: number;
+    challengeIpMismatch?: number;
+    invalidPow?: number;
+    duplicateNonce?: number;
+    rateLimited?: number;
+  };
   epochClicks?: number | null;
   seasonClicks?: number;
   lifetimeClicks?: number;
@@ -200,6 +208,8 @@ export interface MiningChallengeResponse {
   issuedAt?: number;
   expiresAt?: number;
   ttlSeconds?: number;
+  requiresVerification?: boolean;
+  reason?: string;
   error?: string;
 }
 

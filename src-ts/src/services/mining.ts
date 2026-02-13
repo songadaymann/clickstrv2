@@ -41,6 +41,23 @@ let challengeRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 /** How many seconds before expiry to refresh (gives buffer for network latency) */
 const CHALLENGE_REFRESH_BUFFER_SECONDS = 5;
 
+/** Callback to read the current Turnstile token from UI state */
+let getTurnstileToken: (() => string | null) | null = null;
+
+/** Callback to request Turnstile verification UI when challenge fetch is blocked */
+let onChallengeVerificationRequired: (() => void) | null = null;
+
+/**
+ * Configure auth callbacks used by mining challenge refresh.
+ */
+export function configureMiningAuth(options: {
+  getTurnstileToken?: () => string | null;
+  onVerificationRequired?: () => void;
+}): void {
+  getTurnstileToken = options.getTurnstileToken || null;
+  onChallengeVerificationRequired = options.onVerificationRequired || null;
+}
+
 /**
  * Get the current mining challenge (for inclusion in submit requests)
  */
@@ -56,7 +73,14 @@ async function refreshChallenge(): Promise<string | null> {
   if (!gameState.userAddress) return null;
 
   try {
-    const result = await fetchMiningChallenge(gameState.userAddress);
+    const turnstileToken = getTurnstileToken ? getTurnstileToken() : null;
+    const result = await fetchMiningChallenge(gameState.userAddress, turnstileToken);
+    if (result.requiresVerification) {
+      if (onChallengeVerificationRequired) {
+        onChallengeVerificationRequired();
+      }
+      return null;
+    }
     if (result.success && result.challenge) {
       currentMiningChallenge = result.challenge;
       challengeExpiresAt = result.expiresAt || (Date.now() + (result.ttlSeconds || 30) * 1000);
@@ -345,6 +369,11 @@ export async function startMining(onFound: (nonce: bigint, challenge: string | n
   const needsChallenge = !currentMiningChallenge || (challengeExpiresAt - Date.now() < CHALLENGE_REFRESH_BUFFER_SECONDS * 1000);
   if (needsChallenge) {
     await refreshChallenge();
+  }
+  if (!currentMiningChallenge || challengeExpiresAt <= Date.now()) {
+    console.warn('[Mining] Cannot start: no valid challenge available');
+    onFound(0n, null);
+    return;
   }
 
   onNonceFound = onFound;

@@ -679,10 +679,33 @@ export async function fetchV2ClaimableEpochs(address: string): Promise<V2Claimab
  * The challenge is a short-lived token that must be included in the PoW hash
  * to prove nonces were mined in real-time (prevents offline pre-computation).
  */
-export async function fetchMiningChallenge(address: string): Promise<MiningChallengeResponse> {
+export async function fetchMiningChallenge(
+  address: string,
+  turnstileToken?: string | null
+): Promise<MiningChallengeResponse> {
   try {
-    const response = await fetch(`${V2_CLAIM_URL}?challenge=true&address=${address}`);
+    const params = new URLSearchParams({
+      challenge: 'true',
+      address,
+    });
+    if (turnstileToken) {
+      params.set('turnstileToken', turnstileToken);
+    }
+    const response = await fetch(`${V2_CLAIM_URL}?${params.toString()}`);
     if (!response.ok) {
+      if (response.status === 403) {
+        const body = await response.json() as MiningChallengeResponse;
+        if (body.requiresVerification) {
+          const verificationResponse: MiningChallengeResponse = {
+            success: false,
+            requiresVerification: true,
+          };
+          if (body.reason) {
+            verificationResponse.reason = body.reason;
+          }
+          return verificationResponse;
+        }
+      }
       if (response.status === 429) {
         return { success: false, error: 'Rate limited' };
       }
