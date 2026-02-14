@@ -478,7 +478,7 @@ function setupEventListeners(): void {
 // Wallet modal setup removed - AppKit provides its own modal UI
 
 /** Token contract address for copying */
-const TOKEN_ADDRESS = '0x7ddbd0c4a0383a0f9611b715809f92c90e1d991d';
+const TOKEN_ADDRESS = CONFIG.tokenAddress;
 
 /**
  * Set up copy address button(s)
@@ -1383,9 +1383,84 @@ async function handleOffChainSubmit(nonces: readonly MinedNonce[]): Promise<void
  * so clearing the full submitted batch can drop uncredited clicks.
  */
 function applyV2SubmissionResult(
-  result: { validClicks?: number; invalidClicks?: number },
+  result: {
+    validClicks?: number;
+    invalidClicks?: number;
+    acceptedIndexes?: number[];
+    nonceOutcomes?: Array<
+      'accepted'
+      | 'missingChallenge'
+      | 'invalidChallenge'
+      | 'challengeIpMismatch'
+      | 'invalidPow'
+      | 'duplicateNonce'
+      | 'rateLimited'
+    >;
+  },
   submittedCount: number
 ): number {
+  const hasExactIndexes = Array.isArray(result.acceptedIndexes) || Array.isArray(result.nonceOutcomes);
+
+  // Preferred path: exact per-index reconciliation from server.
+  if (hasExactIndexes) {
+    const acceptedSet = new Set<number>();
+    const removeSet = new Set<number>();
+    const permanentRejectOutcomes = new Set([
+      'missingChallenge',
+      'invalidChallenge',
+      'challengeIpMismatch',
+      'invalidPow',
+      'duplicateNonce',
+    ]);
+
+    if (Array.isArray(result.acceptedIndexes)) {
+      for (const idx of result.acceptedIndexes) {
+        if (Number.isInteger(idx) && idx >= 0 && idx < submittedCount) {
+          acceptedSet.add(idx);
+          removeSet.add(idx);
+        }
+      }
+    }
+
+    let rateLimitedCount = 0;
+    if (Array.isArray(result.nonceOutcomes)) {
+      const max = Math.min(submittedCount, result.nonceOutcomes.length);
+      for (let idx = 0; idx < max; idx++) {
+        const outcome = result.nonceOutcomes[idx];
+        if (outcome === 'accepted') {
+          acceptedSet.add(idx);
+          removeSet.add(idx);
+        } else if (outcome === 'rateLimited') {
+          rateLimitedCount++;
+        } else if (permanentRejectOutcomes.has(outcome)) {
+          removeSet.add(idx);
+        }
+      }
+    }
+
+    const removed = gameState.applySubmissionIndexes(submittedCount, Array.from(removeSet));
+    const accepted = acceptedSet.size;
+    const rejected = Math.max(0, submittedCount - accepted);
+    const permanentlyRejected = Math.max(0, removed - accepted);
+
+    // Surface partial acceptance/rejection while keeping retriable entries queued.
+    if (rejected > 0) {
+      const retryNote = rateLimitedCount > 0 ? ` (${rateLimitedCount} queued to retry)` : '';
+      showAchievementToast(
+        'Partial Submit',
+        `${accepted}/${submittedCount} accepted${retryNote}`
+      );
+    } else if (permanentlyRejected > 0) {
+      showAchievementToast(
+        'Filtered',
+        `${permanentlyRejected} invalid duplicate/stale clicks removed`
+      );
+    }
+
+    return accepted;
+  }
+
+  // Backward-compatible fallback for older server responses.
   const accepted = typeof result.validClicks === 'number'
     ? Math.max(0, Math.min(submittedCount, result.validClicks))
     : submittedCount;
@@ -1464,6 +1539,13 @@ async function handleV2Submit(nonces: readonly MinedNonce[]): Promise<void> {
       serverStats = serverStatsRefresh;
       await renderNftPanel(serverStatsRefresh);
     }
+  } else if (Array.isArray(result.nonceOutcomes) || Array.isArray(result.acceptedIndexes)) {
+    // Some server errors (e.g. all invalid/stale duplicates) still carry
+    // per-index outcomes so we can prune dead entries from the queue.
+    applyV2SubmissionResult(result, nonces.length);
+    updateDisplays();
+    updateSubmitButton();
+    claimBtn.disabled = false;
   } else if (result.requiresVerification) {
     // Server says re-verify
     turnstileToken = null;
@@ -1527,6 +1609,10 @@ async function maybeAutoSubmit(): Promise<void> {
           })),
         });
       }
+    } else if (Array.isArray(result.nonceOutcomes) || Array.isArray(result.acceptedIndexes)) {
+      applyV2SubmissionResult(result, nonces.length);
+      updateDisplays();
+      updateSubmitButton();
     } else if (result.requiresVerification) {
       console.log('[AutoSubmit] Turnstile expired, clearing token');
       turnstileToken = null;
@@ -1579,6 +1665,11 @@ async function handleV2Claim(e: Event): Promise<void> {
     );
 
     if (!submitResult.success) {
+      if (Array.isArray(submitResult.nonceOutcomes) || Array.isArray(submitResult.acceptedIndexes)) {
+        applyV2SubmissionResult(submitResult, nonces.length);
+        updateDisplays();
+        updateSubmitButton();
+      }
       if (submitResult.requiresVerification) {
         console.log('[V2 Claim] Verification required, showing Turnstile');
         turnstileToken = null;
