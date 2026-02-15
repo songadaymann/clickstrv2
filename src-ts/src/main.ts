@@ -2030,6 +2030,7 @@ function updateDisplays(): void {
   setText(arcadeCurrentEl, gameState.validClicks.toLocaleString());
   setText(arcadeAlltimeEl, gameState.allTimeClicks.toLocaleString());
   setText(arcadeEarnedEl, formatTokens(gameState.totalEarned));
+  setText(leaderboardToggleEpoch, gameState.isGameActive ? 'Epoch' : 'Off-Season');
 
   // Update game status, epoch, and pool based on whether game is active
   if (gameState.isGameActive) {
@@ -2227,8 +2228,9 @@ async function fetchLeaderboard(): Promise<void> {
 
 function renderLeaderboard(): void {
   if (leaderboardData.length === 0) {
+    const epochEmptyLabel = gameState.isGameActive ? 'No clicks this epoch!' : 'No off-season clicks yet!';
     const emptyMessages: Record<V2LeaderboardType, string> = {
-      epoch: 'No clicks this epoch!',
+      epoch: epochEmptyLabel,
       alltime: 'No clicks yet!',
       earned: 'No earnings yet!',
       bots: 'No flagged bots',
@@ -2703,9 +2705,10 @@ function renderRankingsTabs(): void {
   let tabsHtml = '';
 
   if (IS_V2) {
+    const epochLabel = gameState.isGameActive ? 'Current Epoch' : 'Off-Season';
     // V2 mode: 3 tabs matching the leaderboard panel
     const tabs: { id: string; label: string }[] = [
-      { id: 'epoch', label: 'Current Epoch' },
+      { id: 'epoch', label: epochLabel },
       { id: 'alltime', label: 'All-Time Clicks' },
       { id: 'earned', label: 'All-Time Earned' },
     ];
@@ -2798,8 +2801,9 @@ async function loadRankingsForTab(tabId: string): Promise<void> {
  */
 function renderRankingsList(data: MergedLeaderboardEntry[], isEarned = false): void {
   if (data.length === 0) {
+    const epochEmptyLabel = gameState.isGameActive ? 'No clicks this epoch!' : 'No off-season clicks yet!';
     const emptyMessages: Record<string, string> = {
-      epoch: 'No clicks this epoch!',
+      epoch: epochEmptyLabel,
       alltime: 'No clicks recorded yet!',
       earned: 'No earnings yet!',
       global: 'No clicks recorded yet!',
