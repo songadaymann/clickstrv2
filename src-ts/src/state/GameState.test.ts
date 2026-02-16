@@ -215,6 +215,40 @@ describe('GameState', () => {
       expect(gameState.pendingNonces).toEqual([{ nonce: BigInt(3), challenge: 'challenge-b' }]);
     });
 
+    it('can remove specific indexes from submitted prefix', () => {
+      gameState.setConnected('0x1234');
+      gameState.addClick(BigInt(1), 'challenge-a');
+      gameState.addClick(BigInt(2), 'challenge-a');
+      gameState.addClick(BigInt(3), 'challenge-a');
+      gameState.addClick(BigInt(4), 'challenge-b');
+      gameState.addClick(BigInt(5), 'challenge-b');
+
+      const removed = gameState.applySubmissionIndexes(3, [0, 2]);
+
+      expect(removed).toBe(2);
+      expect(gameState.validClicks).toBe(3);
+      expect(gameState.pendingNonces).toEqual([
+        { nonce: BigInt(2), challenge: 'challenge-a' },
+        { nonce: BigInt(4), challenge: 'challenge-b' },
+        { nonce: BigInt(5), challenge: 'challenge-b' },
+      ]);
+    });
+
+    it('ignores invalid submission indexes safely', () => {
+      gameState.setConnected('0x1234');
+      gameState.addClick(BigInt(10), 'challenge-a');
+      gameState.addClick(BigInt(20), 'challenge-a');
+      gameState.addClick(BigInt(30), 'challenge-b');
+
+      const removed = gameState.applySubmissionIndexes(2, [-1, 2, 999, 1, 1]);
+
+      expect(removed).toBe(1);
+      expect(gameState.pendingNonces).toEqual([
+        { nonce: BigInt(10), challenge: 'challenge-a' },
+        { nonce: BigInt(30), challenge: 'challenge-b' },
+      ]);
+    });
+
     it('clears storage when all clicks submitted', () => {
       gameState.setConnected('0x1234');
       gameState.addClick(BigInt(1), 'challenge-a');

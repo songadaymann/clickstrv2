@@ -229,6 +229,46 @@ export class GameState {
     }
   }
 
+  /**
+   * Remove specific indexes from the submitted prefix of the queue.
+   * Used by V2 to reconcile partial acceptance/rejection without dropping
+   * unprocessed clicks.
+   *
+   * @param submittedCount Number of nonces submitted from the front of the queue
+   * @param removeIndexes 0-based indexes within that submitted prefix to remove
+   * @returns Number of removed entries
+   */
+  applySubmissionIndexes(submittedCount: number, removeIndexes: readonly number[]): number {
+    const cappedSubmitted = Math.max(0, Math.min(submittedCount, this._pendingNonces.length));
+    if (cappedSubmitted === 0 || removeIndexes.length === 0) return 0;
+
+    const removeSet = new Set<number>();
+    for (const idx of removeIndexes) {
+      if (Number.isInteger(idx) && idx >= 0 && idx < cappedSubmitted) {
+        removeSet.add(idx);
+      }
+    }
+    if (removeSet.size === 0) return 0;
+
+    const submittedSlice = this._pendingNonces.slice(0, cappedSubmitted);
+    const remainingSlice = this._pendingNonces.slice(cappedSubmitted);
+    const keptSubmitted = submittedSlice.filter((_, idx) => !removeSet.has(idx));
+    const removed = submittedSlice.length - keptSubmitted.length;
+
+    this._pendingNonces = [...keptSubmitted, ...remainingSlice];
+    this._validClicks = this._pendingNonces.length;
+    this._serverClicksPending = Math.max(0, this._serverClicksPending - removed);
+    this.emit('clicksChanged');
+
+    if (this._validClicks === 0) {
+      clearClicksFromStorage();
+    } else {
+      this.saveToStorage();
+    }
+
+    return removed;
+  }
+
   /** Mark server clicks as recorded */
   markServerClicksRecorded(count: number): void {
     this._serverClicksPending = Math.max(0, this._serverClicksPending - count);

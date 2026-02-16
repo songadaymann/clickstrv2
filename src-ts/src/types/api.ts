@@ -178,6 +178,24 @@ export interface V2SubmitClicksResponse {
   success: boolean;
   validClicks?: number;
   invalidClicks?: number;
+  /**
+   * Indexes in the submitted batch that were accepted and recorded.
+   * Lets the client reconcile queue state exactly (instead of count-only clears).
+   */
+  acceptedIndexes?: number[];
+  /**
+   * Per-submission outcome by index.
+   * Length matches submitted nonces when provided by server.
+   */
+  nonceOutcomes?: Array<
+    'accepted'
+    | 'missingChallenge'
+    | 'invalidChallenge'
+    | 'challengeIpMismatch'
+    | 'invalidPow'
+    | 'duplicateNonce'
+    | 'rateLimited'
+  >;
   rejectionReasons?: {
     missingChallenge?: number;
     invalidChallenge?: number;
